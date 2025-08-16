@@ -157,6 +157,16 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
     { key: 'n', altKey: true, action: nextQuestion, description: 'Next question' },
     { key: 'p', altKey: true, action: previousQuestion, description: 'Previous question' },
     { key: 'f', altKey: true, action: flagQuestion, description: 'Flag question' },
+    { key: 'm', ctrlKey: true, action: () => {
+      // Trigger voice input on current question if it's a short answer
+      const voiceButton = document.querySelector('[data-testid="button-voice-input"]') as HTMLButtonElement;
+      if (voiceButton) {
+        voiceButton.click();
+        announceToScreenReader('Voice input triggered');
+      } else {
+        announceToScreenReader('Voice input not available for this question type');
+      }
+    }, description: 'Toggle voice input for short answers' },
   ];
 
   useKeyboardNavigation(shortcuts);
