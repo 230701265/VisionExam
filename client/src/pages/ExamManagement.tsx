@@ -546,13 +546,13 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                               <p className="mb-2" data-testid={`text-question-${index + 1}`}>
                                 {question.text}
                               </p>
-                              {question.type === 'multiple_choice' && question.options && (
+                              {question.type === 'multiple_choice' && question.options && Array.isArray(question.options) && (
                                 <div className="text-sm text-gray-600 dark:text-gray-400">
                                   <strong>Options:</strong>{' '}
                                   {(question.options as MultipleChoiceOption[]).map((opt, i) => (
                                     <span key={opt.id}>
-                                      {opt.id.toUpperCase()}: {opt.text}
-                                      {i < (question.options as MultipleChoiceOption[]).length - 1 && ', '}
+                                      {String(opt.id).toUpperCase()}: {String(opt.text)}
+                                      {i < ((question.options as MultipleChoiceOption[]).length - 1) ? ', ' : ''}
                                     </span>
                                   ))}
                                 </div>

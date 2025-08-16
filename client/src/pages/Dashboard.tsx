@@ -24,7 +24,7 @@ export default function Dashboard({ currentUser }: DashboardProps) {
   });
 
   const handleStartExam = (examTitle: string) => {
-    announceToScreenReader(`Starting ${examTitle}. You will be navigated to the exam interface.`);
+    announceToScreenReader(`Starting ${examTitle}. You will be navigated to the exam interface with full keyboard navigation and audio support. Remember: Alt+R to read questions, Alt+N for next, Alt+P for previous, Alt+F to flag questions.`);
   };
 
   const formatDuration = (minutes: number) => {

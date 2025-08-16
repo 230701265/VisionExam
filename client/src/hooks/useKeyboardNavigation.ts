@@ -36,7 +36,8 @@ export function useKeyboardNavigation(shortcuts: KeyboardShortcut[] = []) {
     // General keyboard help
     if (altKey && key.toLowerCase() === 'h') {
       event.preventDefault();
-      const helpText = shortcuts.map(s => {
+      let helpText = 'AccessExam Keyboard Shortcuts: ';
+      helpText += shortcuts.map(s => {
         const modifiers = [];
         if (s.altKey) modifiers.push('Alt');
         if (s.ctrlKey) modifiers.push('Ctrl');
@@ -45,7 +46,9 @@ export function useKeyboardNavigation(shortcuts: KeyboardShortcut[] = []) {
         return `${keyCombo}: ${s.description}`;
       }).join('. ');
       
-      announceToScreenReader(`Keyboard shortcuts: ${helpText}`);
+      helpText += '. General navigation: Tab to move forward, Shift+Tab to move backward, Enter or Space to activate buttons, Arrow keys to navigate radio buttons and dropdowns.';
+      
+      announceToScreenReader(helpText);
     }
   }, [shortcuts, announceToScreenReader]);
 

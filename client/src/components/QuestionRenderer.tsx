@@ -107,13 +107,19 @@ export function QuestionRenderer({
         onChange={(e) => handleAnswerChange(e.target.value)}
         rows={8}
         className="w-full text-base focus:ring-2 focus:ring-primary"
-        placeholder="Type your answer here..."
+        placeholder="Type your detailed answer here. You can write multiple paragraphs..."
         aria-describedby={`answer-help-${questionNumber}`}
         data-testid="textarea-short-answer"
+        onFocus={() => announceToScreenReader(`Short answer text field for question ${questionNumber}. Type your detailed response here.`)}
       />
       <p id={`answer-help-${questionNumber}`} className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-        Please provide a detailed explanation. Use the Tab key to navigate and Enter to create new lines.
+        Please provide a detailed explanation. Use the Tab key to navigate and Enter to create new lines. Press Alt + R to hear the question again.
       </p>
+      {answer && (
+        <p className="text-sm text-green-600 dark:text-green-400 mt-2">
+          Answer saved: {answer.length} characters written.
+        </p>
+      )}
     </div>
   );
 

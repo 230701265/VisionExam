@@ -68,9 +68,9 @@ export class MemStorage implements IStorage {
       role: "instructor"
     });
 
-    // Create sample student user
+    // Create sample student user with roll number
     const student = await this.createUser({
-      username: "student",
+      username: "S001",
       password: "password123",
       role: "student"
     });
@@ -152,7 +152,11 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const user: User = { 
+      ...insertUser, 
+      id,
+      role: insertUser.role || 'student'
+    };
     this.users.set(id, user);
     return user;
   }
@@ -183,7 +187,9 @@ export class MemStorage implements IStorage {
     const exam: Exam = { 
       ...insertExam, 
       id,
-      createdAt: new Date()
+      createdAt: new Date(),
+      description: insertExam.description || null,
+      isActive: insertExam.isActive ?? true
     };
     this.exams.set(id, exam);
     return exam;
@@ -207,7 +213,13 @@ export class MemStorage implements IStorage {
 
   async createQuestion(insertQuestion: InsertQuestion): Promise<Question> {
     const id = randomUUID();
-    const question: Question = { ...insertQuestion, id };
+    const question: Question = { 
+      ...insertQuestion, 
+      id,
+      options: insertQuestion.options || null,
+      correctAnswer: insertQuestion.correctAnswer || null,
+      points: insertQuestion.points || 1
+    };
     this.questions.set(id, question);
     return question;
   }
@@ -271,7 +283,11 @@ export class MemStorage implements IStorage {
     const attempt: ExamAttempt = { 
       ...insertAttempt, 
       id,
-      startedAt: new Date()
+      startedAt: new Date(),
+      completedAt: insertAttempt.completedAt || null,
+      score: insertAttempt.score || null,
+      correctAnswers: insertAttempt.correctAnswers || null,
+      timeSpent: insertAttempt.timeSpent || null
     };
     this.examAttempts.set(id, attempt);
     return attempt;
@@ -293,7 +309,17 @@ export class MemStorage implements IStorage {
 
   async createUserSettings(insertSettings: InsertUserSettings): Promise<UserSettings> {
     const id = randomUUID();
-    const settings: UserSettings = { ...insertSettings, id };
+    const settings: UserSettings = { 
+      ...insertSettings, 
+      id,
+      fontSize: insertSettings.fontSize || 18,
+      contrastMode: insertSettings.contrastMode || 'normal',
+      speechRate: insertSettings.speechRate || 10,
+      speechVolume: insertSettings.speechVolume || 80,
+      audioInstructions: insertSettings.audioInstructions ?? true,
+      soundEffects: insertSettings.soundEffects ?? true,
+      reducedMotion: insertSettings.reducedMotion ?? false
+    };
     this.userSettings.set(id, settings);
     return settings;
   }

@@ -246,7 +246,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
         </div>
 
         {/* Progress Bar */}
-        <div className="mb-8" role="progressbar" aria-valuenow={currentQuestionIndex + 1} aria-valuemin="0" aria-valuemax={exam.questions.length} aria-label="Exam progress">
+        <div className="mb-8" role="progressbar" aria-valuenow={currentQuestionIndex + 1} aria-valuemin={0} aria-valuemax={exam.questions.length} aria-label="Exam progress">
           <Progress value={progress} className="w-full h-4" />
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2" data-testid="text-progress-percentage">
             Progress: {Math.round(progress)}% complete

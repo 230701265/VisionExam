@@ -10,7 +10,8 @@ import Dashboard from "@/pages/Dashboard";
 import ExamTaking from "@/pages/ExamTaking";
 import Results from "@/pages/Results";
 import Settings from "@/pages/Settings";
-import ExamManagement from "@/pages/ExamManagement";
+import ExamManagement from "./pages/ExamManagement";
+import GradeAnswers from "./pages/GradeAnswers";
 import NotFound from "@/pages/not-found";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,12 +25,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  username: z.string().min(1, "Roll number/Username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
 const registerSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  username: z.string().min(3, "Roll number/Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum(["student", "instructor"]).default("student"),
 });
@@ -142,12 +143,13 @@ function AuthForm() {
             <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
               <div>
                 <Label htmlFor="login-username" className="text-base font-medium">
-                  Username
+                  Roll Number (Students) / Username (Teachers)
                 </Label>
                 <Input
                   id="login-username"
                   {...loginForm.register('username')}
                   className="mt-1 text-base focus:ring-2 focus:ring-primary"
+                  placeholder="Enter your roll number or username"
                   data-testid="input-login-username"
                 />
                 {loginForm.formState.errors.username && (
@@ -188,12 +190,13 @@ function AuthForm() {
             <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
               <div>
                 <Label htmlFor="register-username" className="text-base font-medium">
-                  Username
+                  Roll Number (Students) / Username (Teachers)
                 </Label>
                 <Input
                   id="register-username"
                   {...registerForm.register('username')}
                   className="mt-1 text-base focus:ring-2 focus:ring-primary"
+                  placeholder="Enter your roll number or username"
                   data-testid="input-register-username"
                 />
                 {registerForm.formState.errors.username && (
@@ -249,7 +252,7 @@ function AuthForm() {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Demo credentials: username "student" or "instructor", password "password123"
+              Demo credentials: Roll number "S001" (student) or Username "instructor" (teacher), password "password123"
             </p>
           </div>
         </CardContent>
@@ -267,6 +270,9 @@ function Router({ currentUser }: { currentUser: User }) {
       <Route path="/settings" component={() => <Settings currentUser={currentUser} />} />
       {currentUser.role === 'instructor' && (
         <Route path="/exams" component={() => <ExamManagement currentUser={currentUser} />} />
+      )}
+      {currentUser.role === 'instructor' && (
+        <Route path="/grade" component={() => <GradeAnswers currentUser={currentUser} />} />
       )}
       <Route component={NotFound} />
     </Switch>

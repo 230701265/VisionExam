@@ -18,7 +18,10 @@ export function Navigation({ currentUser, onLogout }: NavigationProps) {
   ];
 
   if (currentUser?.role === 'instructor') {
-    navItems.splice(1, 0, { href: '/exams', label: 'Manage Exams', 'data-testid': 'link-manage-exams' });
+    navItems.splice(1, 0, 
+      { href: '/exams', label: 'Manage Exams', 'data-testid': 'link-manage-exams' },
+      { href: '/grade', label: 'Grade Answers', 'data-testid': 'link-grade-answers' }
+    );
   }
 
   const handleNavigation = (label: string) => {
