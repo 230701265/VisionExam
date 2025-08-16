@@ -41,7 +41,7 @@ export function Navigation({ currentUser, onLogout }: NavigationProps) {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">
             <Link href="/" className="focus-visible:outline-2 focus-visible:outline-white" data-testid="link-home">
-              AccessExam
+              OPSIS
             </Link>
           </h1>
           <nav role="navigation" aria-label="Main navigation">

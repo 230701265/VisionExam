@@ -36,7 +36,7 @@ export function useKeyboardNavigation(shortcuts: KeyboardShortcut[] = []) {
     // General keyboard help
     if (altKey && key.toLowerCase() === 'h') {
       event.preventDefault();
-      let helpText = 'AccessExam Keyboard Shortcuts: ';
+      let helpText = 'OPSIS Keyboard Shortcuts: ';
       helpText += shortcuts.map(s => {
         const modifiers = [];
         if (s.altKey) modifiers.push('Alt');

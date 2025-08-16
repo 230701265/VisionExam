@@ -48,7 +48,7 @@ export function AccessibilityProvider({ children, userId }: AccessibilityProvide
   useEffect(() => {
     const timer = setTimeout(() => {
       // Auto-read welcome message for blind students
-      const welcomeMessage = `Welcome to AccessExam - the accessible examination platform designed for blind students. 
+      const welcomeMessage = `Welcome to OPSIS - the accessible examination platform designed for blind students. 
         This application automatically reads content and provides full keyboard navigation support. 
         You can navigate using Tab key, activate buttons with Enter or Space, and use keyboard shortcuts for quick actions.
         Press Alt + H anytime for help, Alt + R to read page content, Alt + N for next question, Alt + P for previous question.

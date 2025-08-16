@@ -106,7 +106,7 @@ function AuthForm() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-primary">AccessExam</CardTitle>
+          <CardTitle className="text-3xl font-bold text-primary">OPSIS</CardTitle>
           <CardDescription className="text-lg">
             Accessible examination platform designed for screen reader users
           </CardDescription>
@@ -361,7 +361,7 @@ function App() {
                   </div>
                 </div>
                 <div className="border-t border-gray-300 dark:border-gray-600 pt-6 mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-                  <p>&copy; 2024 AccessExam. Designed for full accessibility compliance with WCAG 2.1 AA standards.</p>
+                  <p>&copy; 2024 OPSIS. Designed for full accessibility compliance with WCAG 2.1 AA standards.</p>
                 </div>
               </div>
             </footer>

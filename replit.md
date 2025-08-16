@@ -1,6 +1,6 @@
 # Overview
 
-AccessExam is a comprehensive accessibility-focused exam management system built as a full-stack web application. The system enables instructors to create and manage exams while providing students with an accessible exam-taking experience. The application emphasizes WCAG compliance, keyboard navigation, screen reader compatibility, and customizable accessibility features including text-to-speech, adjustable font sizes, and high contrast modes.
+OPSIS is a comprehensive accessibility-focused exam management system built as a full-stack web application. The system enables instructors to create and manage exams while providing students with an accessible exam-taking experience. The application emphasizes WCAG compliance, keyboard navigation, screen reader compatibility, and customizable accessibility features including text-to-speech, adjustable font sizes, and high contrast modes.
 
 # User Preferences
 

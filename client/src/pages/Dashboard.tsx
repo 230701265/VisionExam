@@ -52,7 +52,7 @@ export default function Dashboard({ currentUser }: DashboardProps) {
       <section aria-labelledby="dashboard-heading">
         <div className="mb-8">
           <h2 id="dashboard-heading" className="text-3xl font-bold mb-4">
-            Welcome to AccessExam, {currentUser.username}
+            Welcome to OPSIS, {currentUser.username}
           </h2>
           <p className="text-lg mb-6">
             Navigate through your available exams and manage your testing experience with full keyboard and screen reader support.

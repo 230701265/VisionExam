@@ -50,6 +50,7 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
   const [showExamDialog, setShowExamDialog] = useState(false);
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [editingExam, setEditingExam] = useState<Exam | null>(null);
 
   const { data: exams = [], isLoading: examsLoading } = useQuery<Exam[]>({
     queryKey: ['/api/exams'],
@@ -93,9 +94,27 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/exams'] });
       setShowExamDialog(false);
+      setEditingExam(null);
       examForm.reset();
       toast({ title: 'Success', description: 'Exam created successfully' });
       announceToScreenReader('Exam created successfully');
+    },
+  });
+
+  const updateExamMutation = useMutation({
+    mutationFn: async (data: ExamForm) => {
+      if (!editingExam) throw new Error('No exam to update');
+      
+      const response = await apiRequest('PUT', `/api/exams/${editingExam.id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/exams'] });
+      setShowExamDialog(false);
+      setEditingExam(null);
+      examForm.reset();
+      toast({ title: 'Success', description: 'Exam updated successfully' });
+      announceToScreenReader('Exam updated successfully');
     },
   });
 
@@ -148,7 +167,21 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
   });
 
   const handleCreateExam = (data: ExamForm) => {
-    createExamMutation.mutate(data);
+    if (editingExam) {
+      updateExamMutation.mutate(data);
+    } else {
+      createExamMutation.mutate(data);
+    }
+  };
+
+  const handleEditExam = (exam: Exam) => {
+    setEditingExam(exam);
+    examForm.reset({
+      title: exam.title,
+      description: exam.description || '',
+      duration: exam.duration,
+    });
+    setShowExamDialog(true);
   };
 
   const handleCreateQuestion = (data: QuestionForm) => {
@@ -202,6 +235,10 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                 <DialogTrigger asChild>
                   <Button
                     className="bg-primary hover:bg-primary-dark focus-visible:outline-2 focus-visible:outline-primary"
+                    onClick={() => {
+                      setEditingExam(null);
+                      examForm.reset();
+                    }}
                     data-testid="button-create-exam"
                   >
                     <Plus className="mr-2 h-4 w-4" />
@@ -210,9 +247,14 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Create New Exam</DialogTitle>
+                    <DialogTitle>
+                      {editingExam ? 'Edit Exam' : 'Create New Exam'}
+                    </DialogTitle>
                     <DialogDescription>
-                      Set up a new exam with title, description, and duration.
+                      {editingExam 
+                        ? 'Update the exam details below.' 
+                        : 'Set up a new exam with title, description, and duration.'
+                      }
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={examForm.handleSubmit(handleCreateExam)} className="space-y-4">
@@ -268,11 +310,16 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                     <DialogFooter>
                       <Button
                         type="submit"
-                        disabled={createExamMutation.isPending}
+                        disabled={createExamMutation.isPending || updateExamMutation.isPending}
                         className="bg-primary hover:bg-primary-dark"
                         data-testid="button-save-exam"
                       >
-                        {createExamMutation.isPending ? 'Creating...' : 'Create Exam'}
+                        {(createExamMutation.isPending || updateExamMutation.isPending)
+                          ? 'Saving...' 
+                          : editingExam
+                          ? 'Update Exam'
+                          : 'Create Exam'
+                        }
                       </Button>
                     </DialogFooter>
                   </form>
@@ -307,12 +354,29 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                     onClick={() => setSelectedExam(exam)}
                   >
                     <CardContent className="pt-4">
-                      <h4 className="font-semibold mb-2" data-testid={`text-exam-title-${exam.id}`}>
-                        {exam.title}
-                      </h4>
-                      <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                        <Clock className="mr-1 h-3 w-3" />
-                        {exam.duration} min
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold mb-2" data-testid={`text-exam-title-${exam.id}`}>
+                            {exam.title}
+                          </h4>
+                          <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <Clock className="mr-1 h-3 w-3" />
+                            {exam.duration} min
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditExam(exam);
+                          }}
+                          className="ml-2 focus-visible:outline-2 focus-visible:outline-primary"
+                          data-testid={`button-edit-exam-${exam.id}`}
+                        >
+                          <Edit className="mr-1 h-3 w-3" />
+                          Edit
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
