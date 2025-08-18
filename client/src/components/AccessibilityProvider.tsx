@@ -49,10 +49,12 @@ export function AccessibilityProvider({ children, userId }: AccessibilityProvide
     const timer = setTimeout(() => {
       // Auto-read welcome message for blind students
       const welcomeMessage = `Welcome to OPSIS - the accessible examination platform designed for blind students. 
-        This application automatically reads content and provides full keyboard navigation support. 
-        You can navigate using Tab key, activate buttons with Enter or Space, and use keyboard shortcuts for quick actions.
-        Press Alt + H anytime for help, Alt + R to read page content, Alt + N for next question, Alt + P for previous question.
-        Students should login using their roll number. Teachers can login with their username to create and manage exams.`;
+        This application provides complete keyboard navigation without needing a mouse or scrolling. 
+        Use Alt + Down and Up arrows to navigate through all elements on any page. 
+        Use Tab for standard navigation, or Alt + M to jump to main content, Alt + B for buttons, Alt + L for links.
+        Press Alt + H anytime for complete keyboard help, or click the Keyboard Help button in the bottom right.
+        Alt + R reads content aloud, Alt + N and P navigate questions during exams.
+        Students login with roll number, teachers with username.`;
       
       announceToScreenReader(welcomeMessage);
       speak(welcomeMessage);

@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AccessibilityProvider } from "@/components/AccessibilityProvider";
 import { Navigation } from "@/components/Navigation";
+import { KeyboardNavigationHelp } from "@/components/KeyboardNavigationHelp";
 import Dashboard from "@/pages/Dashboard";
 import ExamTaking from "@/pages/ExamTaking";
 import Results from "@/pages/Results";
@@ -23,6 +24,7 @@ import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePageNavigation } from "@/hooks/usePageNavigation";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Roll number/Username is required"),
@@ -262,6 +264,14 @@ function AuthForm() {
 }
 
 function Router({ currentUser }: { currentUser: User }) {
+  // Enable page navigation for keyboard-only users
+  const { announceHelp } = usePageNavigation({
+    enableArrowNavigation: true,
+    enableQuickJumps: true,
+    announceNavigation: true,
+    skipInvisible: true
+  });
+
   return (
     <Switch>
       <Route path="/" component={() => <Dashboard currentUser={currentUser} />} />
@@ -326,6 +336,7 @@ function App() {
 
             <Navigation currentUser={currentUser} onLogout={handleLogout} />
             <Router currentUser={currentUser} />
+            <KeyboardNavigationHelp />
 
             {/* Footer */}
             <footer role="contentinfo" className="bg-gray-100 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-600 mt-12">
@@ -334,11 +345,12 @@ function App() {
                   <div>
                     <h3 className="text-lg font-semibold mb-4">Keyboard Shortcuts</h3>
                     <dl className="text-sm space-y-1">
-                      <div><dt className="inline font-medium">Alt + R:</dt> <dd className="inline">Read page content</dd></div>
-                      <div><dt className="inline font-medium">Alt + N:</dt> <dd className="inline">Next question</dd></div>
-                      <div><dt className="inline font-medium">Alt + P:</dt> <dd className="inline">Previous question</dd></div>
-                      <div><dt className="inline font-medium">Alt + F:</dt> <dd className="inline">Flag question</dd></div>
+                      <div><dt className="inline font-medium">Alt + Down/Up:</dt> <dd className="inline">Navigate elements</dd></div>
+                      <div><dt className="inline font-medium">Alt + M:</dt> <dd className="inline">Jump to main content</dd></div>
+                      <div><dt className="inline font-medium">Alt + B/L/I:</dt> <dd className="inline">Jump to buttons/links/inputs</dd></div>
+                      <div><dt className="inline font-medium">Alt + 1-6:</dt> <dd className="inline">Jump to headings</dd></div>
                       <div><dt className="inline font-medium">Alt + H:</dt> <dd className="inline">Help menu</dd></div>
+                      <div><dt className="inline font-medium">Tab/Shift+Tab:</dt> <dd className="inline">Standard navigation</dd></div>
                     </dl>
                   </div>
                   <div>

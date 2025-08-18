@@ -173,6 +173,108 @@
     outline-offset: 2px;
   }
 
+  /* Enhanced keyboard navigation styles */
+  *:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  /* Keyboard navigation highlight */
+  .keyboard-navigation-active {
+    outline: 3px solid var(--primary) !important;
+    outline-offset: 2px !important;
+    background: rgba(var(--primary), 0.1) !important;
+    transition: all 0.2s ease-in-out;
+  }
+
+  /* Skip links styling */
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .skip-link:focus {
+    position: absolute;
+    left: 6px;
+    top: 7px;
+    width: auto;
+    height: auto;
+    padding: 8px 16px;
+    background: var(--primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    z-index: 9999;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Card hover and focus states for keyboard navigation */
+  .card:focus,
+  .card:focus-within {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Button focus states */
+  button:focus,
+  input:focus,
+  select:focus,
+  textarea:focus,
+  a:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  /* Reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* High contrast mode improvements */
+  @media (prefers-contrast: high) {
+    .focus-visible:focus-visible,
+    *:focus {
+      outline: 4px solid var(--primary);
+      outline-offset: 2px;
+    }
+  }
+
+  /* Smooth scrolling for keyboard navigation */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Ensure proper focus management */
+  [tabindex="-1"]:focus {
+    outline: none;
+  }
+
+  /* Navigation announcement styles */
+  .navigation-announcement {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   /* Enhanced focus styles for better visibility */
   button:focus-visible,
   input:focus-visible,

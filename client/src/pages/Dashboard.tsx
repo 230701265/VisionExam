@@ -100,11 +100,23 @@ export default function Dashboard({ currentUser }: DashboardProps) {
             ) : (
               <div className="space-y-4">
                 {exams.map((exam) => (
-                  <Card key={exam.id} className="border-2 hover:border-primary/50 transition-colors">
+                  <Card 
+                    key={exam.id} 
+                    className="border-2 hover:border-primary/50 transition-colors card focus-within:border-primary"
+                    tabIndex={0}
+                    role="article"
+                    aria-labelledby={`exam-title-${exam.id}`}
+                    data-navigable="true"
+                    data-testid={`card-exam-${exam.id}`}
+                  >
                     <CardContent className="pt-6">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <h4 className="text-xl font-semibold mb-2" data-testid={`text-exam-title-${exam.id}`}>
+                          <h4 
+                            id={`exam-title-${exam.id}`}
+                            className="text-xl font-semibold mb-2" 
+                            data-testid={`text-exam-title-${exam.id}`}
+                          >
                             {exam.title}
                           </h4>
                           <p className="text-gray-700 dark:text-gray-300 mb-4" data-testid={`text-exam-description-${exam.id}`}>
@@ -112,15 +124,15 @@ export default function Dashboard({ currentUser }: DashboardProps) {
                           </p>
                           <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
                             <span className="flex items-center" data-testid={`text-exam-duration-${exam.id}`}>
-                              <Clock className="mr-1 h-4 w-4" />
+                              <Clock className="mr-1 h-4 w-4" aria-hidden="true" />
                               Duration: {formatDuration(exam.duration)}
                             </span>
                             <span className="flex items-center">
-                              <FileText className="mr-1 h-4 w-4" />
+                              <FileText className="mr-1 h-4 w-4" aria-hidden="true" />
                               Questions: Loading...
                             </span>
                             <span className="flex items-center">
-                              <Calendar className="mr-1 h-4 w-4" />
+                              <Calendar className="mr-1 h-4 w-4" aria-hidden="true" />
                               Available now
                             </span>
                           </div>
@@ -129,14 +141,14 @@ export default function Dashboard({ currentUser }: DashboardProps) {
                           <Button
                             className="bg-primary hover:bg-primary-dark ml-6 focus-visible:outline-2 focus-visible:outline-primary"
                             onClick={() => handleStartExam(exam.title)}
-                            aria-describedby="start-exam-desc"
+                            aria-describedby={`start-exam-desc-${exam.id}`}
                             data-testid={`button-start-exam-${exam.id}`}
                           >
                             Start Exam
                           </Button>
                         </Link>
-                        <p id="start-exam-desc" className="sr-only">
-                          Begin the {exam.title}. You will be navigated to the exam interface.
+                        <p id={`start-exam-desc-${exam.id}`} className="sr-only">
+                          Begin the {exam.title}. You will be navigated to the exam interface with full keyboard and screen reader support.
                         </p>
                       </div>
                     </CardContent>

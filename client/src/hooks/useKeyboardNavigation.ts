@@ -51,7 +51,8 @@ export function useKeyboardNavigation(shortcuts: KeyboardShortcut[] = []) {
       }).join('. ');
       
       const platformNav = isMac ? 'Option + H for help, Option + R to read, Option + N for next, Option + P for previous, Option + F to flag, Cmd + M for voice input' : 'Alt + H for help, Alt + R to read, Alt + N for next, Alt + P for previous, Alt + F to flag, Ctrl + M for voice input';
-      helpText += '. General navigation: Tab to move forward, Shift+Tab to move backward, Enter or Space to activate buttons, Arrow keys to navigate radio buttons and dropdowns. Platform shortcuts: ' + platformNav;
+      const pageNav = isMac ? 'Option + Down/Up: Navigate all elements, Option + M: Main content, Option + B/L/I: Jump to buttons/links/inputs, Option + 1-6: Jump to headings' : 'Alt + Down/Up: Navigate all elements, Alt + M: Main content, Alt + B/L/I: Jump to buttons/links/inputs, Alt + 1-6: Jump to headings';
+      helpText += '. General navigation: Tab to move forward, Shift+Tab to move backward, Enter or Space to activate buttons, Arrow keys to navigate radio buttons and dropdowns. Page navigation: ' + pageNav + '. Platform shortcuts: ' + platformNav;
       
       announceToScreenReader(helpText);
     }
