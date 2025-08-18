@@ -11,6 +11,7 @@ import Dashboard from "@/pages/Dashboard";
 import ExamTaking from "@/pages/ExamTaking";
 import Results from "@/pages/Results";
 import Settings from "@/pages/Settings";
+import Help from "@/pages/Help";
 import ExamManagement from "./pages/ExamManagement";
 import GradeAnswers from "./pages/GradeAnswers";
 import NotFound from "@/pages/not-found";
@@ -278,6 +279,7 @@ function Router({ currentUser }: { currentUser: User }) {
       <Route path="/exam/:id" component={() => <ExamTaking currentUser={currentUser} />} />
       <Route path="/results/:id" component={() => <Results currentUser={currentUser} />} />
       <Route path="/settings" component={() => <Settings currentUser={currentUser} />} />
+      <Route path="/help" component={() => <Help currentUser={currentUser} />} />
       {currentUser.role === 'instructor' && (
         <Route path="/exams" component={() => <ExamManagement currentUser={currentUser} />} />
       )}

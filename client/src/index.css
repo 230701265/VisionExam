@@ -179,6 +179,26 @@
     outline-offset: 2px;
   }
 
+  /* Ensure navigation is always visible */
+  header[role="banner"] {
+    position: relative;
+    z-index: 10;
+    background: hsl(var(--primary)) !important;
+    color: white !important;
+  }
+
+  /* Navigation link visibility */
+  nav[role="navigation"] a,
+  nav[role="navigation"] button {
+    color: white !important;
+    text-decoration: none;
+  }
+
+  nav[role="navigation"] a:hover,
+  nav[role="navigation"] button:hover {
+    text-decoration: underline;
+  }
+
   /* Keyboard navigation highlight */
   .keyboard-navigation-active {
     outline: 3px solid var(--primary) !important;
