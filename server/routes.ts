@@ -224,6 +224,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Code execution routes
+  app.post("/api/code/execute", async (req, res) => {
+    try {
+      const { questionId, code, language, attemptId, testCases } = req.body;
+      
+      if (!questionId || !code || !language) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Simulate code execution with mock results
+      const executionResult = await simulateCodeExecution(code, language, testCases);
+      
+      // Store submission if attemptId is provided
+      if (attemptId) {
+        await storage.createCodeSubmission({
+          attemptId,
+          questionId,
+          userId: "current-user", // In real app, this would come from session
+          code,
+          language,
+          status: executionResult.status,
+          testResults: executionResult.testResults,
+          executionTime: executionResult.executionTime,
+          memoryUsed: executionResult.memoryUsed
+        });
+      }
+
+      res.json(executionResult);
+    } catch (error) {
+      res.status(500).json({ 
+        status: 'error',
+        output: '',
+        error: error instanceof Error ? error.message : 'Code execution failed',
+        testResults: [],
+        executionTime: 0,
+        memoryUsed: 0,
+        passedTests: 0,
+        totalTests: 0
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Mock code execution function
+async function simulateCodeExecution(code: string, language: string, testCases: any[]): Promise<any> {
+  // Simulate execution delay
+  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+  
+  const executionTime = Math.floor(Math.random() * 500) + 50;
+  const memoryUsed = Math.floor(Math.random() * 1000) + 100;
+  
+  // Simple heuristic to determine if code looks correct
+  const isLikelyCorrect = (code: string, language: string): boolean => {
+    if (language === 'javascript') {
+      return code.includes('function') && 
+             (code.includes('return') || code.includes('console.log')) &&
+             code.length > 50;
+    } else if (language === 'python') {
+      return code.includes('def') && 
+             (code.includes('return') || code.includes('print')) &&
+             code.length > 40;
+    }
+    return code.length > 30;
+  };
+  
+  const codeQuality = isLikelyCorrect(code, language);
+  const passRate = codeQuality ? 0.8 : 0.3; // 80% pass rate for good code, 30% for poor code
+  
+  const testResults = testCases.map((testCase: any, index: number) => {
+    const passed = Math.random() < passRate;
+    return {
+      testCaseId: testCase.id,
+      passed,
+      actualOutput: passed ? testCase.expectedOutput : "Wrong output",
+      expectedOutput: testCase.expectedOutput,
+      executionTime: Math.floor(Math.random() * 100) + 10,
+      error: passed ? undefined : "Test case failed"
+    };
+  });
+  
+  const passedTests = testResults.filter(r => r.passed).length;
+  const totalTests = testResults.length;
+  const allPassed = passedTests === totalTests;
+  
+  return {
+    status: allPassed ? 'passed' : (passedTests > 0 ? 'failed' : 'failed'),
+    output: allPassed ? "All tests passed!" : `${passedTests}/${totalTests} tests passed`,
+    testResults,
+    executionTime,
+    memoryUsed,
+    passedTests,
+    totalTests
+  };
 }

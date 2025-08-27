@@ -324,7 +324,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AccessibilityProvider userId={currentUser.id}>
+        <AccessibilityProvider>
           <div className="min-h-screen bg-background text-foreground">
             {/* Skip Links */}
             <div className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50">

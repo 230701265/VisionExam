@@ -1,80 +1,183 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
-import { useTextToSpeech } from '@/hooks/useTextToSpeech';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+export interface AccessibilitySettings {
+  fontSize: number;
+  contrastMode: 'normal' | 'high' | 'dark';
+  speechRate: number;
+  speechVolume: number;
+  audioInstructions: boolean;
+  soundEffects: boolean;
+  reducedMotion: boolean;
+  speechEnabled: boolean;
+}
 
 interface AccessibilityContextType {
-  settings: any;
-  updateSettings: (settings: any) => void;
+  settings: AccessibilitySettings;
+  updateSettings: (settings: Partial<AccessibilitySettings>) => void;
+  announceToScreenReader: (message: string, priority?: 'polite' | 'assertive') => void;
   speak: (text: string) => void;
-  announceToScreenReader: (message: string) => void;
-  isLoading: boolean;
+  stopSpeaking: () => void;
+  isSpeaking: boolean;
+  speechSupported: boolean;
 }
 
-const AccessibilityContext = createContext<AccessibilityContextType | null>(null);
+const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);
 
-export function useAccessibility() {
-  const context = useContext(AccessibilityContext);
-  if (!context) {
-    throw new Error('useAccessibility must be used within AccessibilityProvider');
-  }
-  return context;
-}
-
-interface AccessibilityProviderProps {
-  children: React.ReactNode;
-  userId: string | null;
-}
-
-export function AccessibilityProvider({ children, userId }: AccessibilityProviderProps) {
-  const { settings, updateSettings, isLoading, getSpeechRate, getSpeechVolume } = useAccessibilitySettings(userId);
-  const { speak } = useTextToSpeech({
-    rate: getSpeechRate(),
-    volume: getSpeechVolume(),
+export function AccessibilityProvider({ children }: { children: ReactNode }) {
+  const [settings, setSettings] = useState<AccessibilitySettings>({
+    fontSize: 18,
+    contrastMode: 'normal',
+    speechRate: 10, // 0.5 to 2.0, stored as 5-20
+    speechVolume: 80,
+    audioInstructions: true,
+    soundEffects: true,
+    reducedMotion: false,
+    speechEnabled: false
   });
 
-  const announceToScreenReader = (message: string) => {
-    const announcer = document.getElementById('announcements');
-    if (announcer) {
-      announcer.textContent = message;
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesis | null>(null);
+  const [ariaLiveRegion, setAriaLiveRegion] = useState<HTMLElement | null>(null);
+
+  // Initialize speech synthesis and ARIA live region
+  useEffect(() => {
+    // Check for speech synthesis support
+    if ('speechSynthesis' in window) {
+      setSpeechSynthesis(window.speechSynthesis);
+      setSpeechSupported(true);
+      setSettings(prev => ({ ...prev, speechEnabled: true }));
+    }
+
+    // Create ARIA live region for screen reader announcements
+    const liveRegion = document.createElement('div');
+    liveRegion.setAttribute('aria-live', 'polite');
+    liveRegion.setAttribute('aria-atomic', 'true');
+    liveRegion.style.position = 'absolute';
+    liveRegion.style.left = '-10000px';
+    liveRegion.style.width = '1px';
+    liveRegion.style.height = '1px';
+    liveRegion.style.overflow = 'hidden';
+    document.body.appendChild(liveRegion);
+    setAriaLiveRegion(liveRegion);
+
+    // Apply initial settings to document
+    applyAccessibilitySettings(settings);
+
+    return () => {
+      if (liveRegion && document.body.contains(liveRegion)) {
+        document.body.removeChild(liveRegion);
+      }
+    };
+  }, []);
+
+  // Apply settings to the document
+  const applyAccessibilitySettings = (newSettings: AccessibilitySettings) => {
+    const root = document.documentElement;
+    
+    // Apply font size
+    root.style.fontSize = `${newSettings.fontSize}px`;
+    
+    // Apply contrast mode
+    root.classList.remove('high-contrast', 'dark-mode');
+    if (newSettings.contrastMode === 'high') {
+      root.classList.add('high-contrast');
+    } else if (newSettings.contrastMode === 'dark') {
+      root.classList.add('dark-mode');
     }
     
-    // Also speak if audio instructions are enabled
-    if (settings.audioInstructions) {
+    // Apply reduced motion
+    if (newSettings.reducedMotion) {
+      root.classList.add('reduce-motion');
+    } else {
+      root.classList.remove('reduce-motion');
+    }
+  };
+
+  const updateSettings = (newSettings: Partial<AccessibilitySettings>) => {
+    const updatedSettings = { ...settings, ...newSettings };
+    setSettings(updatedSettings);
+    applyAccessibilitySettings(updatedSettings);
+  };
+
+  const announceToScreenReader = (message: string, priority: 'polite' | 'assertive' = 'polite') => {
+    if (ariaLiveRegion) {
+      ariaLiveRegion.setAttribute('aria-live', priority);
+      ariaLiveRegion.textContent = message;
+      
+      // Clear after announcement
+      setTimeout(() => {
+        if (ariaLiveRegion) {
+          ariaLiveRegion.textContent = '';
+        }
+      }, 1000);
+    }
+
+    // Also speak if TTS is enabled and available
+    if (settings.audioInstructions && speechSupported) {
       speak(message);
     }
   };
 
-  // Initialize accessibility announcements on mount
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      // Auto-read welcome message for blind students
-      const welcomeMessage = `Welcome to OPSIS - the accessible examination platform designed for blind students. 
-        This application provides complete keyboard navigation without needing a mouse or scrolling. 
-        Use Alt + Down and Up arrows to navigate through all elements on any page. 
-        Use Tab for standard navigation, or Alt + M to jump to main content, Alt + B for buttons, Alt + L for links.
-        Press Alt + H anytime for complete keyboard help, or click the Keyboard Help button in the bottom right.
-        Alt + R reads content aloud, Alt + N and P navigate questions during exams.
-        Students login with roll number, teachers with username.`;
-      
-      announceToScreenReader(welcomeMessage);
-      speak(welcomeMessage);
-    }, 1500);
+  const speak = (text: string) => {
+    if (!speechSynthesis || !settings.speechEnabled || !settings.audioInstructions) {
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, []);
+    // Cancel any current speech
+    speechSynthesis.cancel();
 
-  const value = {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = settings.speechRate / 10; // Convert 5-20 to 0.5-2.0
+    utterance.volume = settings.speechVolume / 100; // Convert 0-100 to 0-1.0
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (speechSynthesis) {
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  const contextValue: AccessibilityContextType = {
     settings,
     updateSettings,
-    speak,
     announceToScreenReader,
-    isLoading,
+    speak,
+    stopSpeaking,
+    isSpeaking,
+    speechSupported
   };
 
   return (
-    <AccessibilityContext.Provider value={value}>
-      <div id="announcements" aria-live="polite" aria-atomic="true" className="sr-only" />
+    <AccessibilityContext.Provider value={contextValue}>
       {children}
+      
+      {/* Accessibility Instructions */}
+      <div className="sr-only">
+        <h1>OPSIS Coding Exam Platform - Accessibility Features</h1>
+        <p>
+          This platform supports comprehensive keyboard navigation and screen reader functionality.
+          Use Alt+Up/Down arrows to navigate between sections.
+          Press H key to access keyboard shortcuts help.
+          Tab key navigates through interactive elements.
+          All coding editors support standard VS Code keyboard shortcuts.
+        </p>
+      </div>
     </AccessibilityContext.Provider>
   );
+}
+
+export function useAccessibility(): AccessibilityContextType {
+  const context = useContext(AccessibilityContext);
+  if (!context) {
+    throw new Error('useAccessibility must be used within an AccessibilityProvider');
+  }
+  return context;
 }

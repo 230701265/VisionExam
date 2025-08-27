@@ -1,67 +1,128 @@
 import { useEffect, useCallback } from 'react';
 
-interface KeyboardShortcut {
+export interface KeyboardShortcut {
   key: string;
-  altKey?: boolean;
   ctrlKey?: boolean;
-  metaKey?: boolean; // Cmd key on Mac
   shiftKey?: boolean;
+  altKey?: boolean;
+  metaKey?: boolean;
   action: () => void;
   description: string;
 }
 
 export function useKeyboardNavigation(shortcuts: KeyboardShortcut[] = []) {
-  const announceToScreenReader = useCallback((message: string) => {
-    const announcer = document.getElementById('announcements');
-    if (announcer) {
-      announcer.textContent = message;
-    }
-  }, []);
-
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    const { key, altKey, ctrlKey, metaKey, shiftKey } = event;
-    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-
-    // Find matching shortcut
-    const shortcut = shortcuts.find(s => 
-      s.key.toLowerCase() === key.toLowerCase() &&
-      (s.altKey === undefined || s.altKey === altKey) &&
-      (s.ctrlKey === undefined || s.ctrlKey === (isMac ? metaKey : ctrlKey)) &&
-      (s.metaKey === undefined || s.metaKey === metaKey) &&
-      (s.shiftKey === undefined || s.shiftKey === shiftKey)
-    );
-
-    if (shortcut) {
-      event.preventDefault();
-      shortcut.action();
+    // Ignore if user is typing in an input, textarea, or contenteditable element
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.contentEditable === 'true' ||
+        target.getAttribute('role') === 'textbox') {
+      return;
     }
 
-    // General keyboard help (Alt+H on Windows, Option+H on Mac)
-    if (altKey && key.toLowerCase() === 'h') {
-      event.preventDefault();
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      let helpText = 'OPSIS Keyboard Shortcuts: ';
-      helpText += shortcuts.map(s => {
-        const modifiers = [];
-        if (s.altKey) modifiers.push(isMac ? 'Option' : 'Alt');
-        if (s.ctrlKey) modifiers.push(isMac ? 'Cmd' : 'Ctrl');
-        if (s.shiftKey) modifiers.push('Shift');
-        const keyCombo = [...modifiers, s.key.toUpperCase()].join(' + ');
-        return `${keyCombo}: ${s.description}`;
-      }).join('. ');
-      
-      const platformNav = isMac ? 'Option + H for help, Option + R to read, Option + N for next, Option + P for previous, Option + F to flag, Cmd + M for voice input' : 'Alt + H for help, Alt + R to read, Alt + N for next, Alt + P for previous, Alt + F to flag, Ctrl + M for voice input';
-      const pageNav = isMac ? 'Option + Down/Up: Navigate all elements, Option + M: Main content, Option + B/L/I: Jump to buttons/links/inputs, Option + 1-6: Jump to headings' : 'Alt + Down/Up: Navigate all elements, Alt + M: Main content, Alt + B/L/I: Jump to buttons/links/inputs, Alt + 1-6: Jump to headings';
-      helpText += '. General navigation: Tab to move forward, Shift+Tab to move backward, Enter or Space to activate buttons, Arrow keys to navigate radio buttons and dropdowns. Page navigation: ' + pageNav + '. Platform shortcuts: ' + platformNav;
-      
-      announceToScreenReader(helpText);
+    // Check for matching shortcuts
+    for (const shortcut of shortcuts) {
+      if (event.key === shortcut.key &&
+          Boolean(event.ctrlKey) === Boolean(shortcut.ctrlKey) &&
+          Boolean(event.shiftKey) === Boolean(shortcut.shiftKey) &&
+          Boolean(event.altKey) === Boolean(shortcut.altKey) &&
+          Boolean(event.metaKey) === Boolean(shortcut.metaKey)) {
+        
+        event.preventDefault();
+        event.stopPropagation();
+        shortcut.action();
+        return;
+      }
     }
-  }, [shortcuts, announceToScreenReader]);
+  }, [shortcuts]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [handleKeyDown]);
+}
 
-  return { announceToScreenReader };
+// Global navigation shortcuts
+export function useGlobalNavigation() {
+  const navigateToElement = useCallback((selector: string) => {
+    const element = document.querySelector(selector) as HTMLElement;
+    if (element) {
+      element.focus();
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
+
+  const navigateBetweenSections = useCallback((direction: 'up' | 'down') => {
+    const navigableElements = Array.from(
+      document.querySelectorAll('[data-navigable="true"]')
+    ) as HTMLElement[];
+    
+    const currentFocused = document.activeElement as HTMLElement;
+    const currentIndex = navigableElements.findIndex(el => 
+      el === currentFocused || el.contains(currentFocused)
+    );
+    
+    let nextIndex: number;
+    if (direction === 'down') {
+      nextIndex = currentIndex < navigableElements.length - 1 ? currentIndex + 1 : 0;
+    } else {
+      nextIndex = currentIndex > 0 ? currentIndex - 1 : navigableElements.length - 1;
+    }
+    
+    const nextElement = navigableElements[nextIndex];
+    if (nextElement) {
+      const focusableElement = nextElement.querySelector(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      ) as HTMLElement || nextElement;
+      
+      focusableElement.focus();
+      focusableElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
+
+  const globalShortcuts: KeyboardShortcut[] = [
+    {
+      key: 'ArrowDown',
+      altKey: true,
+      action: () => navigateBetweenSections('down'),
+      description: 'Navigate to next section (Alt+Down)'
+    },
+    {
+      key: 'ArrowUp',
+      altKey: true,
+      action: () => navigateBetweenSections('up'),
+      description: 'Navigate to previous section (Alt+Up)'
+    },
+    {
+      key: '1',
+      altKey: true,
+      action: () => navigateToElement('main'),
+      description: 'Go to main content (Alt+1)'
+    },
+    {
+      key: '2',
+      altKey: true,
+      action: () => navigateToElement('nav'),
+      description: 'Go to navigation (Alt+2)'
+    },
+    {
+      key: 'h',
+      action: () => {
+        // Show keyboard shortcuts help
+        const helpEvent = new CustomEvent('show-keyboard-help');
+        document.dispatchEvent(helpEvent);
+      },
+      description: 'Show keyboard shortcuts help (H)'
+    },
+  ];
+
+  useKeyboardNavigation(globalShortcuts);
+
+  return {
+    navigateToElement,
+    navigateBetweenSections
+  };
 }

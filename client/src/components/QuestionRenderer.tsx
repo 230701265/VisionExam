@@ -5,6 +5,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useAccessibility } from './AccessibilityProvider';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { CodingQuestionRenderer } from './CodingQuestionRenderer';
 import type { Question, MultipleChoiceOption } from '@shared/schema';
 import { Volume2, Flag, Mic, MicOff } from 'lucide-react';
 
@@ -296,6 +297,15 @@ export function QuestionRenderer({
         {question.type === 'multiple_choice' && renderMultipleChoice()}
         {question.type === 'short_answer' && renderShortAnswer()}
         {question.type === 'true_false' && renderTrueFalse()}
+        {question.type === 'coding' && (
+          <CodingQuestionRenderer
+            question={question}
+            currentAnswer={answer || ''}
+            onAnswerChange={onAnswerChange}
+            questionNumber={questionNumber}
+            totalQuestions={totalQuestions}
+          />
+        )}
       </div>
 
       <div className="flex justify-between items-center pt-6 border-t border-gray-300 dark:border-gray-600">

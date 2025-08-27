@@ -4,6 +4,7 @@ import {
   type Question, type InsertQuestion,
   type ExamAttempt, type InsertExamAttempt,
   type UserSettings, type InsertUserSettings,
+  type CodeSubmission, type InsertCodeSubmission,
   type ExamWithQuestions,
   type ExamAttemptWithDetails
 } from "@shared/schema";
@@ -36,6 +37,11 @@ export interface IStorage {
   createExamAttempt(attempt: InsertExamAttempt): Promise<ExamAttempt>;
   updateExamAttempt(id: string, attempt: Partial<ExamAttempt>): Promise<ExamAttempt | undefined>;
 
+  // Code submission operations
+  createCodeSubmission(submission: InsertCodeSubmission): Promise<CodeSubmission>;
+  getCodeSubmissionsByAttempt(attemptId: string): Promise<CodeSubmission[]>;
+  getCodeSubmissionsByQuestion(questionId: string): Promise<CodeSubmission[]>;
+
   // User settings operations
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
   createUserSettings(settings: InsertUserSettings): Promise<UserSettings>;
@@ -48,6 +54,7 @@ export class MemStorage implements IStorage {
   private questions: Map<string, Question>;
   private examAttempts: Map<string, ExamAttempt>;
   private userSettings: Map<string, UserSettings>;
+  public codeSubmissions: Map<string, CodeSubmission>;
 
   constructor() {
     this.users = new Map();
@@ -55,6 +62,7 @@ export class MemStorage implements IStorage {
     this.questions = new Map();
     this.examAttempts = new Map();
     this.userSettings = new Map();
+    this.codeSubmissions = new Map();
     
     // Initialize with sample data
     this.initializeSampleData();
@@ -124,6 +132,99 @@ export class MemStorage implements IStorage {
       correctAnswer: "true",
       points: 1,
       order: 3
+    });
+
+    // Create a programming exam
+    const programmingExam = await this.createExam({
+      title: "Programming Fundamentals",
+      description: "Test your coding skills with JavaScript, Python, and problem-solving challenges.",
+      duration: 90,
+      createdBy: instructor.id,
+      isActive: true
+    });
+
+    // Add coding questions
+    await this.createQuestion({
+      examId: programmingExam.id,
+      type: "coding",
+      text: "Write a function that calculates the factorial of a given number n.\n\nExample:\n- factorial(5) should return 120\n- factorial(0) should return 1\n- factorial(3) should return 6",
+      language: "javascript",
+      starterCode: `// Write your factorial function here
+function factorial(n) {
+    // Your code here
+}
+
+// Example usage:
+console.log(factorial(5)); // Should output 120`,
+      testCases: [
+        {
+          id: "test1",
+          input: "5",
+          expectedOutput: "120",
+          description: "Basic factorial test"
+        },
+        {
+          id: "test2", 
+          input: "0",
+          expectedOutput: "1",
+          description: "Edge case: factorial of 0"
+        },
+        {
+          id: "test3",
+          input: "3", 
+          expectedOutput: "6",
+          description: "Small number test"
+        },
+        {
+          id: "test4",
+          input: "1",
+          expectedOutput: "1",
+          description: "Edge case: factorial of 1",
+          isHidden: true
+        }
+      ],
+      points: 10,
+      order: 1,
+      timeLimit: 5,
+      memoryLimit: 128
+    });
+
+    await this.createQuestion({
+      examId: programmingExam.id,
+      type: "coding",
+      text: "Write a Python function that finds the maximum number in a list.\n\nExample:\n- find_max([1, 3, 2, 8, 5]) should return 8\n- find_max([-1, -5, -2]) should return -1\n- find_max([42]) should return 42",
+      language: "python",
+      starterCode: `# Write your find_max function here
+def find_max(numbers):
+    # Your code here
+    pass
+
+# Example usage:
+print(find_max([1, 3, 2, 8, 5]))  # Should output 8`,
+      testCases: [
+        {
+          id: "test1",
+          input: "[1, 3, 2, 8, 5]",
+          expectedOutput: "8",
+          description: "Basic maximum finding"
+        },
+        {
+          id: "test2",
+          input: "[-1, -5, -2]", 
+          expectedOutput: "-1",
+          description: "All negative numbers"
+        },
+        {
+          id: "test3",
+          input: "[42]",
+          expectedOutput: "42",
+          description: "Single element"
+        }
+      ],
+      points: 8,
+      order: 2,
+      timeLimit: 3,
+      memoryLimit: 64
     });
 
     // Create default user settings for student
@@ -218,7 +319,12 @@ export class MemStorage implements IStorage {
       id,
       options: insertQuestion.options || null,
       correctAnswer: insertQuestion.correctAnswer || null,
-      points: insertQuestion.points || 1
+      points: insertQuestion.points || 1,
+      language: insertQuestion.language || null,
+      starterCode: insertQuestion.starterCode || null,
+      testCases: insertQuestion.testCases || null,
+      timeLimit: insertQuestion.timeLimit || null,
+      memoryLimit: insertQuestion.memoryLimit || null
     };
     this.questions.set(id, question);
     return question;
@@ -287,7 +393,8 @@ export class MemStorage implements IStorage {
       completedAt: insertAttempt.completedAt || null,
       score: insertAttempt.score || null,
       correctAnswers: insertAttempt.correctAnswers || null,
-      timeSpent: insertAttempt.timeSpent || null
+      timeSpent: insertAttempt.timeSpent || null,
+      codeExecutions: insertAttempt.codeExecutions || null
     };
     this.examAttempts.set(id, attempt);
     return attempt;
@@ -300,6 +407,36 @@ export class MemStorage implements IStorage {
     const updatedAttempt = { ...attempt, ...attemptUpdate };
     this.examAttempts.set(id, updatedAttempt);
     return updatedAttempt;
+  }
+
+  // Code submission operations
+  async createCodeSubmission(insertSubmission: InsertCodeSubmission): Promise<CodeSubmission> {
+    const id = randomUUID();
+    const submission: CodeSubmission = { 
+      ...insertSubmission, 
+      id,
+      submittedAt: new Date(),
+      testResults: insertSubmission.testResults || null,
+      executionTime: insertSubmission.executionTime || null,
+      memoryUsed: insertSubmission.memoryUsed || null
+    };
+    // codeSubmissions map should already be initialized in constructor
+    this.codeSubmissions.set(id, submission);
+    return submission;
+  }
+
+  async getCodeSubmissionsByAttempt(attemptId: string): Promise<CodeSubmission[]> {
+    if (!this.codeSubmissions) return [];
+    return Array.from(this.codeSubmissions.values())
+      .filter(submission => submission.attemptId === attemptId)
+      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+  }
+
+  async getCodeSubmissionsByQuestion(questionId: string): Promise<CodeSubmission[]> {
+    if (!this.codeSubmissions) return [];
+    return Array.from(this.codeSubmissions.values())
+      .filter(submission => submission.questionId === questionId)
+      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
   }
 
   // User settings operations

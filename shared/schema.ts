@@ -23,12 +23,18 @@ export const exams = pgTable("exams", {
 export const questions = pgTable("questions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   examId: varchar("exam_id").notNull(),
-  type: text("type").notNull(), // multiple_choice, short_answer, true_false
+  type: text("type").notNull(), // multiple_choice, short_answer, true_false, coding
   text: text("text").notNull(),
   options: jsonb("options"), // for multiple choice questions
   correctAnswer: text("correct_answer"),
   points: integer("points").notNull().default(1),
   order: integer("order").notNull(),
+  // Coding question specific fields
+  language: text("language"), // javascript, python, java, cpp, etc.
+  starterCode: text("starter_code"), // initial code template
+  testCases: jsonb("test_cases"), // array of test cases with input/expected output
+  timeLimit: integer("time_limit"), // execution time limit in seconds
+  memoryLimit: integer("memory_limit"), // memory limit in MB
 });
 
 export const examAttempts = pgTable("exam_attempts", {
@@ -40,8 +46,24 @@ export const examAttempts = pgTable("exam_attempts", {
   score: integer("score"),
   totalQuestions: integer("total_questions").notNull(),
   correctAnswers: integer("correct_answers"),
-  answers: jsonb("answers").notNull(), // questionId -> answer mapping
+  answers: jsonb("answers").notNull(), // questionId -> answer/code mapping
   timeSpent: integer("time_spent"), // in minutes
+  codeExecutions: jsonb("code_executions"), // execution history and results
+});
+
+// New table for coding submissions
+export const codeSubmissions = pgTable("code_submissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  attemptId: varchar("attempt_id").notNull(),
+  questionId: varchar("question_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  code: text("code").notNull(),
+  language: text("language").notNull(),
+  status: text("status").notNull(), // running, passed, failed, error, timeout
+  testResults: jsonb("test_results"), // detailed test case results
+  executionTime: integer("execution_time"), // in milliseconds
+  memoryUsed: integer("memory_used"), // in KB
+  submittedAt: timestamp("submitted_at").notNull().default(sql`now()`),
 });
 
 export const userSettings = pgTable("user_settings", {
@@ -79,6 +101,12 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
   id: true,
 });
 
+// Insert schemas for new table
+export const insertCodeSubmissionSchema = createInsertSchema(codeSubmissions).omit({
+  id: true,
+  submittedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -92,11 +120,16 @@ export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
 export type ExamAttempt = typeof examAttempts.$inferSelect;
 export type InsertExamAttempt = z.infer<typeof insertExamAttemptSchema>;
 
+export type CodeSubmission = typeof codeSubmissions.$inferSelect;
+export type InsertCodeSubmission = z.infer<typeof insertCodeSubmissionSchema>;
+
 export type UserSettings = typeof userSettings.$inferSelect;
 export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
 
 // Additional types for frontend
-export type QuestionType = "multiple_choice" | "short_answer" | "true_false";
+export type QuestionType = "multiple_choice" | "short_answer" | "true_false" | "coding";
+export type ProgrammingLanguage = "javascript" | "python" | "java" | "cpp" | "c" | "typescript" | "go" | "rust";
+export type CodeExecutionStatus = "running" | "passed" | "failed" | "error" | "timeout";
 
 export interface MultipleChoiceOption {
   id: string;
@@ -110,4 +143,33 @@ export interface ExamWithQuestions extends Exam {
 export interface ExamAttemptWithDetails extends ExamAttempt {
   exam: Exam;
   user: User;
+}
+
+// Coding question interfaces
+export interface TestCase {
+  id: string;
+  input: string;
+  expectedOutput: string;
+  description?: string;
+  isHidden?: boolean;
+}
+
+export interface TestResult {
+  testCaseId: string;
+  passed: boolean;
+  actualOutput: string;
+  expectedOutput: string;
+  executionTime: number;
+  error?: string;
+}
+
+export interface CodeExecutionResult {
+  status: CodeExecutionStatus;
+  output: string;
+  error?: string;
+  testResults: TestResult[];
+  executionTime: number;
+  memoryUsed: number;
+  passedTests: number;
+  totalTests: number;
 }
