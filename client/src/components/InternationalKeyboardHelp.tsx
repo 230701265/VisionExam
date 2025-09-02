@@ -155,7 +155,7 @@ export function InternationalKeyboardHelp() {
               <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800" role="region" aria-labelledby="welcome-heading">
                 <h3 id="welcome-heading" className="font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
                   🌍 Universal Access OPSIS - VS Code-like Coding Platform for Everyone
-                  <Badge variant="secondary" className="ml-2">40+ Languages</Badge>
+                  <span className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded">40+ Languages</span>
                 </h3>
                 <p className="text-blue-800 dark:text-blue-200 text-sm leading-relaxed">
                   Engineered following international accessibility standards used by millions of blind and visually impaired developers worldwide. 
