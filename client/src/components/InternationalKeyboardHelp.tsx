@@ -38,10 +38,10 @@ export function InternationalKeyboardHelp() {
       key: "international",
       badge: "WCAG 2.1",
       shortcuts: [
-        { key: "Alt + ↓", description: "Next interactive element (buttons, links, inputs) - Universal standard" },
-        { key: "Alt + ↑", description: "Previous interactive element - Reverse navigation" },
-        { key: "Alt + →", description: "Next form field - Forward through inputs" },
-        { key: "Alt + ←", description: "Previous form field - Backward through inputs" },
+        { key: "Alt + ↓ (Option + ↓ on Mac)", description: "Next interactive element (buttons, links, inputs) - Universal standard" },
+        { key: "Alt + ↑ (Option + ↑ on Mac)", description: "Previous interactive element - Reverse navigation" },
+        { key: "Alt + → (Option + → on Mac)", description: "Next form field - Forward through inputs" },
+        { key: "Alt + ← (Option + ← on Mac)", description: "Previous form field - Backward through inputs" },
         { key: "Tab", description: "Standard forward navigation (all browsers, all countries)" },
         { key: "Shift + Tab", description: "Standard backward navigation (international)" },
         { key: "Escape", description: "Close dialog or return to main content (universal)" },
@@ -53,14 +53,14 @@ export function InternationalKeyboardHelp() {
       key: "landmarks",
       badge: "Section 508",
       shortcuts: [
-        { key: "Alt + M", description: "Jump to Main content region (primary content area)" },
-        { key: "Alt + N", description: "Jump to Navigation region (menu/nav bars)" },
-        { key: "Alt + F", description: "Jump to Footer/contentinfo region" },
-        { key: "Alt + S", description: "Jump to Search region (if available)" },
-        { key: "Alt + R", description: "Jump to Form region (main form areas)" },
-        { key: "Ctrl + Alt + H", description: "Show/hide this help dialog" },
-        { key: "Ctrl + Alt + S", description: "Jump to Submit/Save button" },
-        { key: "Ctrl + Alt + E", description: "Jump to first error or validation message" }
+        { key: "Alt + M (Option + M on Mac)", description: "Jump to Main content region (primary content area)" },
+        { key: "Alt + N (Option + N on Mac)", description: "Jump to Navigation region (menu/nav bars)" },
+        { key: "Alt + F (Option + F on Mac)", description: "Jump to Footer/contentinfo region" },
+        { key: "Alt + S (Option + S on Mac)", description: "Jump to Search region (if available)" },
+        { key: "Alt + R (Option + R on Mac)", description: "Jump to Form region (main form areas)" },
+        { key: "Ctrl + Alt + H (Cmd + Option + H on Mac)", description: "Show/hide this help dialog" },
+        { key: "Ctrl + Alt + S (Cmd + Option + S on Mac)", description: "Jump to Submit/Save button" },
+        { key: "Ctrl + Alt + E (Cmd + Option + E on Mac)", description: "Jump to first error or validation message" }
       ]
     },
     {
@@ -68,33 +68,35 @@ export function InternationalKeyboardHelp() {
       key: "elements",
       badge: "EN 301 549",
       shortcuts: [
-        { key: "Alt + H", description: "Next heading (any level H1-H6)" },
-        { key: "Alt + 1-6", description: "Next heading by specific level (H1, H2, H3, etc.)" },
-        { key: "Alt + B", description: "Next button element" },
-        { key: "Alt + L", description: "Next link/anchor element" },
-        { key: "Alt + I", description: "Next input field/textbox" },
-        { key: "Alt + C", description: "Next checkbox element" },
-        { key: "Alt + O", description: "Next dropdown/select/combobox" },
-        { key: "Alt + T", description: "Next table element (if present)" }
+        { key: "Alt + H (Option + H on Mac)", description: "Next heading (any level H1-H6)" },
+        { key: "Alt + 1-6 (Option + 1-6 on Mac)", description: "Next heading by specific level (H1, H2, H3, etc.)" },
+        { key: "Alt + B (Option + B on Mac)", description: "Next button element" },
+        { key: "Alt + L (Option + L on Mac)", description: "Next link/anchor element" },
+        { key: "Alt + I (Option + I on Mac)", description: "Next input field/textbox" },
+        { key: "Alt + C (Option + C on Mac)", description: "Next checkbox element" },
+        { key: "Alt + O (Option + O on Mac)", description: "Next dropdown/select/combobox" },
+        { key: "Alt + T (Option + T on Mac)", description: "Next table element (if present)" }
       ]
     },
     {
-      title: "VS Code Editor (Monaco) - Professional Standards",
+      title: "VS Code Editor (Monaco) - Cross-Platform",
       key: "coding",
       badge: "VS Code",
       shortcuts: [
-        { key: "F5", description: "Run code / Execute current solution (international shortcut)" },
-        { key: "F9", description: "Reset code editor to initial state" },
-        { key: "Ctrl + S", description: "Save current code (Cmd+S on macOS)" },
-        { key: "Ctrl + /", description: "Toggle line comment (Cmd+/ on macOS)" },
-        { key: "Ctrl + Z", description: "Undo last change (Cmd+Z on macOS)" },
-        { key: "Ctrl + Y", description: "Redo change (Cmd+Shift+Z on macOS)" },
-        { key: "Ctrl + F", description: "Find in code (Cmd+F on macOS)" },
-        { key: "Ctrl + H", description: "Find and replace (Cmd+Option+F on macOS)" },
-        { key: "Ctrl + A", description: "Select all code (Cmd+A on macOS)" },
-        { key: "Alt + Shift + F", description: "Format/beautify code (Option+Shift+F on macOS)" },
-        { key: "Ctrl + D", description: "Add selection to next find match" },
-        { key: "F2", description: "Rename symbol (if available)" }
+        { key: "F5", description: "Run code / Execute current solution (universal)" },
+        { key: "F9", description: "Reset code editor to initial state (universal)" },
+        { key: "Ctrl + S (Cmd + S on Mac)", description: "Save current code" },
+        { key: "Ctrl + / (Cmd + / on Mac)", description: "Toggle line comment" },
+        { key: "Ctrl + Z (Cmd + Z on Mac)", description: "Undo last change" },
+        { key: "Ctrl + Y (Cmd + Shift + Z on Mac)", description: "Redo change" },
+        { key: "Ctrl + F (Cmd + F on Mac)", description: "Find in code" },
+        { key: "Ctrl + H (Cmd + Option + F on Mac)", description: "Find and replace" },
+        { key: "Ctrl + A (Cmd + A on Mac)", description: "Select all code" },
+        { key: "Alt + Shift + F (Option + Shift + F on Mac)", description: "Format/beautify code" },
+        { key: "Ctrl + D (Cmd + D on Mac)", description: "Add selection to next find match" },
+        { key: "F2", description: "Rename symbol (if available)" },
+        { key: "Ctrl + G (Cmd + G on Mac)", description: "Go to line number" },
+        { key: "Ctrl + P (Cmd + P on Mac)", description: "Quick open/command palette" }
       ]
     },
     {
@@ -154,8 +156,8 @@ export function InternationalKeyboardHelp() {
             <div className="space-y-6" role="main">
               <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800" role="region" aria-labelledby="welcome-heading">
                 <h3 id="welcome-heading" className="font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
-                  🌍 Universal Access OPSIS - VS Code-like Coding Platform for Everyone
-                  <span className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded">40+ Languages</span>
+                  🌍 Universal Access OPSIS - Cross-Platform Coding Exam System
+                  <span className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded">Windows • Mac • Linux</span>
                 </h3>
                 <p className="text-blue-800 dark:text-blue-200 text-sm leading-relaxed">
                   Engineered following international accessibility standards used by millions of blind and visually impaired developers worldwide. 

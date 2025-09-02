@@ -7,6 +7,7 @@ OPSIS is a comprehensive VS Code-like coding exam platform built as a full-stack
 Preferred communication style: Simple, everyday language.
 Accessibility Priority: Full keyboard navigation without mouse interaction using international shortcut keys for blind users.
 Navigation Standard: WCAG 2.1 AA compliant keyboard shortcuts following international accessibility standards.
+Cross-Platform Support: Mac-compatible shortcuts using Option key instead of Alt, and Cmd instead of Ctrl for native macOS feel.
 
 # System Architecture
 
@@ -68,7 +69,7 @@ Navigation Standard: WCAG 2.1 AA compliant keyboard shortcuts following internat
 ✓ **International Keyboard Navigation**: Implemented comprehensive WCAG 2.1 AA compliant keyboard shortcuts for blind users worldwide
 ✓ **Global Accessibility Standards**: Added support for international accessibility standards (Section 508, EN 301 549, ADA)
 ✓ **Universal Screen Reader Support**: Compatible with NVDA, JAWS, VoiceOver, Orca, TalkBack across all major platforms
-✓ **Advanced Navigation System**: Alt+Arrow keys, landmark navigation (Alt+M/N/F), element type navigation (Alt+H/B/L/I)
+✓ **Cross-Platform Navigation System**: Alt/Option+Arrow keys, landmark navigation (Alt/Option+M/N/F), element type navigation (Alt/Option+H/B/L/I)
 ✓ **Code Execution System**: Built mock code execution engine with test case validation and performance metrics
 ✓ **Speech Synthesis Integration**: Real-time audio announcements with 40+ language support and adjustable settings
 ✓ **Complete Mouse-Free Operation**: Every feature accessible via keyboard following international blind user standards

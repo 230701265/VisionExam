@@ -112,9 +112,13 @@ export const useInternationalKeyboardNavigation = () => {
                       target.contentEditable === 'true' ||
                       target.closest('.monaco-editor');
 
-    // International accessibility keyboard shortcuts
-    // Based on JAWS, NVDA, and VoiceOver standards
+    // Detect Mac/iOS platforms
+    const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform) || navigator.userAgent.includes('Mac');
     
+    // International accessibility keyboard shortcuts
+    // Based on JAWS, NVDA, VoiceOver (Mac), and other global standards
+    
+    // Alt key navigation (Windows/Linux) OR Option key navigation (Mac)
     if (event.altKey && !event.ctrlKey && !event.metaKey) {
       const key = event.key.toLowerCase();
       
@@ -270,8 +274,8 @@ export const useInternationalKeyboardNavigation = () => {
       }
     }
 
-    // Additional shortcuts with Ctrl+Alt (common international pattern)
-    if (event.ctrlKey && event.altKey && !event.shiftKey) {
+    // Additional shortcuts with Ctrl+Alt (Windows/Linux) or Cmd+Option (Mac)
+    if ((event.ctrlKey && event.altKey && !isMac) || (event.metaKey && event.altKey && isMac)) {
       switch (event.key.toLowerCase()) {
         case 'h':
           event.preventDefault();
