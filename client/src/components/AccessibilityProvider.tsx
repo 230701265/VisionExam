@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useInternationalKeyboardNavigation } from '@/hooks/useInternationalKeyboardNavigation';
 
 export interface AccessibilitySettings {
   fontSize: number;
@@ -24,6 +25,9 @@ interface AccessibilityContextType {
 const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);
 
 export function AccessibilityProvider({ children }: { children: ReactNode }) {
+  // Initialize international keyboard navigation
+  const keyboardNav = useInternationalKeyboardNavigation();
+  
   const [settings, setSettings] = useState<AccessibilitySettings>({
     fontSize: 18,
     contrastMode: 'normal',

@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AccessibilityProvider } from "@/components/AccessibilityProvider";
 import { Navigation } from "@/components/Navigation";
-import { KeyboardNavigationHelp } from "@/components/KeyboardNavigationHelp";
+import { InternationalKeyboardHelp } from "@/components/InternationalKeyboardHelp";
 import Dashboard from "@/pages/Dashboard";
 import ExamTaking from "@/pages/ExamTaking";
 import Results from "@/pages/Results";
@@ -338,21 +338,21 @@ function App() {
 
             <Navigation currentUser={currentUser} onLogout={handleLogout} />
             <Router currentUser={currentUser} />
-            <KeyboardNavigationHelp />
+            <InternationalKeyboardHelp />
 
             {/* Footer */}
             <footer role="contentinfo" className="bg-gray-100 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-600 mt-12">
               <div className="max-w-4xl mx-auto px-6 py-8">
                 <div className="grid md:grid-cols-3 gap-8">
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Keyboard Shortcuts</h3>
+                    <h3 className="text-lg font-semibold mb-4">International Keyboard Shortcuts</h3>
                     <dl className="text-sm space-y-1">
-                      <div><dt className="inline font-medium">Alt + Down/Up:</dt> <dd className="inline">Navigate elements</dd></div>
-                      <div><dt className="inline font-medium">Alt + M:</dt> <dd className="inline">Jump to main content</dd></div>
-                      <div><dt className="inline font-medium">Alt + B/L/I:</dt> <dd className="inline">Jump to buttons/links/inputs</dd></div>
-                      <div><dt className="inline font-medium">Alt + 1-6:</dt> <dd className="inline">Jump to headings</dd></div>
-                      <div><dt className="inline font-medium">Alt + H:</dt> <dd className="inline">Help menu</dd></div>
-                      <div><dt className="inline font-medium">Tab/Shift+Tab:</dt> <dd className="inline">Standard navigation</dd></div>
+                      <div><dt className="inline font-medium">Alt + Arrows:</dt> <dd className="inline">Navigate elements (WCAG standard)</dd></div>
+                      <div><dt className="inline font-medium">Alt + M/N/F:</dt> <dd className="inline">Jump to main/nav/footer regions</dd></div>
+                      <div><dt className="inline font-medium">Alt + H/B/L/I:</dt> <dd className="inline">Next heading/button/link/input</dd></div>
+                      <div><dt className="inline font-medium">Alt + 1-6:</dt> <dd className="inline">Jump to heading levels</dd></div>
+                      <div><dt className="inline font-medium">F5/F9:</dt> <dd className="inline">Run/reset code (VS Code)</dd></div>
+                      <div><dt className="inline font-medium">Ctrl+Alt+H:</dt> <dd className="inline">International help menu</dd></div>
                     </dl>
                   </div>
                   <div>
