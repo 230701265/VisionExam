@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AccessibilityProvider } from "@/components/AccessibilityProvider";
 import { Navigation } from "@/components/Navigation";
 import { InternationalKeyboardHelp } from "@/components/InternationalKeyboardHelp";
+import { QuickAccessibilityPanel } from "@/components/QuickAccessibilityPanel";
 import Dashboard from "@/pages/Dashboard";
 import ExamTaking from "@/pages/ExamTaking";
 import Results from "@/pages/Results";
@@ -293,6 +294,7 @@ function Router({ currentUser }: { currentUser: User }) {
 
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isQuickPanelOpen, setIsQuickPanelOpen] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -304,6 +306,24 @@ function App() {
       }
     }
   }, []);
+
+  // Keyboard shortcut for accessibility panel
+  useEffect(() => {
+    const handleKeyboard = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + A for accessibility panel
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && !e.shiftKey) {
+        e.preventDefault();
+        setIsQuickPanelOpen(prev => !prev);
+      }
+      // Escape to close panel
+      if (e.key === 'Escape' && isQuickPanelOpen) {
+        setIsQuickPanelOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyboard);
+    return () => window.removeEventListener('keydown', handleKeyboard);
+  }, [isQuickPanelOpen]);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -339,6 +359,27 @@ function App() {
             <Navigation currentUser={currentUser} onLogout={handleLogout} />
             <Router currentUser={currentUser} />
             <InternationalKeyboardHelp />
+            
+            {/* Floating Accessibility Button */}
+            <div className="fixed bottom-6 right-6 z-40">
+              <Button
+                onClick={() => setIsQuickPanelOpen(true)}
+                className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg focus-visible:outline-2 focus-visible:outline-white transition-all duration-200 hover:scale-105"
+                aria-label="Open quick accessibility settings (Ctrl+A)"
+                title="Quick Accessibility Settings\n\nKeyboard shortcut: Ctrl+A\n\nIncludes: font size, contrast, motion settings, speech controls"
+                data-testid="button-quick-accessibility"
+              >
+                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                </svg>
+              </Button>
+            </div>
+            
+            {/* Quick Accessibility Panel */}
+            <QuickAccessibilityPanel 
+              isOpen={isQuickPanelOpen}
+              onClose={() => setIsQuickPanelOpen(false)}
+            />
 
             {/* Footer */}
             <footer role="contentinfo" className="bg-gray-100 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-600 mt-12">

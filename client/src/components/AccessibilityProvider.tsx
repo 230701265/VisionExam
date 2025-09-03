@@ -2,14 +2,61 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { useInternationalKeyboardNavigation } from '@/hooks/useInternationalKeyboardNavigation';
 
 export interface AccessibilitySettings {
+  // Display & Visual
   fontSize: number;
   contrastMode: 'normal' | 'high' | 'dark';
+  colorTheme: 'default' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'monochrome';
+  lineHeight: number;
+  letterSpacing: number;
+  fontFamily: 'default' | 'dyslexia' | 'serif' | 'mono';
+  cursorSize: 'normal' | 'large' | 'extra-large';
+  focusIndicatorStyle: 'default' | 'thick' | 'colored' | 'animated';
+  
+  // Motion & Animation
+  reducedMotion: boolean;
+  animationSpeed: 'slow' | 'normal' | 'fast' | 'off';
+  parallaxEffects: boolean;
+  autoplayMedia: boolean;
+  
+  // Audio & Speech
+  speechEnabled: boolean;
   speechRate: number;
   speechVolume: number;
+  speechVoice: string;
+  speechPitch: number;
   audioInstructions: boolean;
   soundEffects: boolean;
-  reducedMotion: boolean;
-  speechEnabled: boolean;
+  audioDescriptions: boolean;
+  
+  // Navigation & Interaction
+  keyboardNavigation: 'standard' | 'enhanced' | 'custom';
+  tabOrder: 'default' | 'logical' | 'visual';
+  skipLinksVisible: boolean;
+  stickyFocus: boolean;
+  clickDelay: number;
+  
+  // Screen Reader & Assistive Tech
+  verboseMode: boolean;
+  announceChanges: boolean;
+  structuralNavigation: boolean;
+  landmarkNavigation: boolean;
+  
+  // Content & Reading
+  readingMode: boolean;
+  textJustification: 'left' | 'center' | 'justify';
+  paragraphSpacing: number;
+  highlightLinks: boolean;
+  showTooltips: boolean;
+  
+  // Timing & Timeouts
+  extendedTimeouts: boolean;
+  timeoutWarnings: boolean;
+  pauseAnimations: boolean;
+  
+  // Language & Localization
+  language: string;
+  dateFormat: 'iso' | 'us' | 'eu' | 'local';
+  numberFormat: 'default' | 'simplified';
 }
 
 interface AccessibilityContextType {
@@ -20,6 +67,10 @@ interface AccessibilityContextType {
   stopSpeaking: () => void;
   isSpeaking: boolean;
   speechSupported: boolean;
+  isLoading: boolean;
+  resetToDefaults: () => void;
+  exportSettings: () => string;
+  importSettings: (settingsString: string) => boolean;
 }
 
 const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);
@@ -28,16 +79,66 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
   // Initialize international keyboard navigation
   const keyboardNav = useInternationalKeyboardNavigation();
   
-  const [settings, setSettings] = useState<AccessibilitySettings>({
+  const getDefaultSettings = (): AccessibilitySettings => ({
+    // Display & Visual
     fontSize: 18,
     contrastMode: 'normal',
+    colorTheme: 'default',
+    lineHeight: 1.6,
+    letterSpacing: 0,
+    fontFamily: 'default',
+    cursorSize: 'normal',
+    focusIndicatorStyle: 'default',
+    
+    // Motion & Animation
+    reducedMotion: false,
+    animationSpeed: 'normal',
+    parallaxEffects: true,
+    autoplayMedia: true,
+    
+    // Audio & Speech
+    speechEnabled: false,
     speechRate: 10, // 0.5 to 2.0, stored as 5-20
     speechVolume: 80,
+    speechVoice: '',
+    speechPitch: 10,
     audioInstructions: true,
     soundEffects: true,
-    reducedMotion: false,
-    speechEnabled: false
+    audioDescriptions: false,
+    
+    // Navigation & Interaction
+    keyboardNavigation: 'enhanced',
+    tabOrder: 'logical',
+    skipLinksVisible: true,
+    stickyFocus: false,
+    clickDelay: 0,
+    
+    // Screen Reader & Assistive Tech
+    verboseMode: false,
+    announceChanges: true,
+    structuralNavigation: true,
+    landmarkNavigation: true,
+    
+    // Content & Reading
+    readingMode: false,
+    textJustification: 'left',
+    paragraphSpacing: 1,
+    highlightLinks: true,
+    showTooltips: true,
+    
+    // Timing & Timeouts
+    extendedTimeouts: false,
+    timeoutWarnings: true,
+    pauseAnimations: false,
+    
+    // Language & Localization
+    language: 'en-US',
+    dateFormat: 'local',
+    numberFormat: 'default'
   });
+
+  const [settings, setSettings] = useState<AccessibilitySettings>(getDefaultSettings());
+  const [isLoading, setIsLoading] = useState(false);
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
@@ -82,6 +183,12 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     // Apply font size
     root.style.fontSize = `${newSettings.fontSize}px`;
     
+    // Apply line height
+    root.style.setProperty('--line-height', newSettings.lineHeight.toString());
+    
+    // Apply letter spacing
+    root.style.setProperty('--letter-spacing', `${newSettings.letterSpacing}px`);
+    
     // Apply contrast mode
     root.classList.remove('high-contrast', 'dark-mode');
     if (newSettings.contrastMode === 'high') {
@@ -90,18 +197,104 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
       root.classList.add('dark-mode');
     }
     
-    // Apply reduced motion
+    // Apply color theme for colorblind users
+    root.classList.remove('protanopia', 'deuteranopia', 'tritanopia', 'monochrome');
+    if (newSettings.colorTheme !== 'default') {
+      root.classList.add(newSettings.colorTheme);
+    }
+    
+    // Apply font family
+    root.classList.remove('font-dyslexia', 'font-serif', 'font-mono');
+    if (newSettings.fontFamily !== 'default') {
+      root.classList.add(`font-${newSettings.fontFamily}`);
+    }
+    
+    // Apply cursor size
+    root.classList.remove('cursor-large', 'cursor-extra-large');
+    if (newSettings.cursorSize !== 'normal') {
+      root.classList.add(`cursor-${newSettings.cursorSize}`);
+    }
+    
+    // Apply focus indicator style
+    root.classList.remove('focus-thick', 'focus-colored', 'focus-animated');
+    if (newSettings.focusIndicatorStyle !== 'default') {
+      root.classList.add(`focus-${newSettings.focusIndicatorStyle}`);
+    }
+    
+    // Apply motion settings
     if (newSettings.reducedMotion) {
       root.classList.add('reduce-motion');
     } else {
       root.classList.remove('reduce-motion');
     }
+    
+    // Apply animation speed
+    root.classList.remove('animation-slow', 'animation-fast', 'animation-off');
+    if (newSettings.animationSpeed !== 'normal') {
+      root.classList.add(`animation-${newSettings.animationSpeed}`);
+    }
+    
+    // Apply reading mode
+    if (newSettings.readingMode) {
+      root.classList.add('reading-mode');
+    } else {
+      root.classList.remove('reading-mode');
+    }
+    
+    // Apply text justification
+    root.style.setProperty('--text-align', newSettings.textJustification);
+    
+    // Apply paragraph spacing
+    root.style.setProperty('--paragraph-spacing', `${newSettings.paragraphSpacing}rem`);
   };
 
-  const updateSettings = (newSettings: Partial<AccessibilitySettings>) => {
-    const updatedSettings = { ...settings, ...newSettings };
-    setSettings(updatedSettings);
-    applyAccessibilitySettings(updatedSettings);
+  const updateSettings = async (newSettings: Partial<AccessibilitySettings>) => {
+    setIsLoading(true);
+    try {
+      const updatedSettings = { ...settings, ...newSettings };
+      setSettings(updatedSettings);
+      applyAccessibilitySettings(updatedSettings);
+      
+      // Save to localStorage
+      localStorage.setItem('opsis-accessibility-settings', JSON.stringify(updatedSettings));
+      
+      // Announce major changes
+      if (newSettings.contrastMode && newSettings.contrastMode !== settings.contrastMode) {
+        announceToScreenReader(`Contrast mode changed to ${newSettings.contrastMode}`);
+      }
+      if (newSettings.fontSize && newSettings.fontSize !== settings.fontSize) {
+        announceToScreenReader(`Font size changed to ${newSettings.fontSize} pixels`);
+      }
+    } finally {
+      setTimeout(() => setIsLoading(false), 300);
+    }
+  };
+  
+  const resetToDefaults = () => {
+    const defaultSettings = getDefaultSettings();
+    setSettings(defaultSettings);
+    applyAccessibilitySettings(defaultSettings);
+    localStorage.removeItem('opsis-accessibility-settings');
+    announceToScreenReader('Settings reset to defaults');
+  };
+  
+  const exportSettings = () => {
+    return JSON.stringify(settings, null, 2);
+  };
+  
+  const importSettings = (settingsString: string) => {
+    try {
+      const importedSettings = JSON.parse(settingsString);
+      const validatedSettings = { ...getDefaultSettings(), ...importedSettings };
+      setSettings(validatedSettings);
+      applyAccessibilitySettings(validatedSettings);
+      localStorage.setItem('opsis-accessibility-settings', JSON.stringify(validatedSettings));
+      announceToScreenReader('Settings imported successfully');
+      return true;
+    } catch (error) {
+      announceToScreenReader('Failed to import settings. Invalid format.');
+      return false;
+    }
   };
 
   const announceToScreenReader = (message: string, priority: 'polite' | 'assertive' = 'polite') => {
@@ -149,6 +342,21 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('opsis-accessibility-settings');
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        const mergedSettings = { ...getDefaultSettings(), ...parsedSettings };
+        setSettings(mergedSettings);
+        applyAccessibilitySettings(mergedSettings);
+      } catch (error) {
+        console.warn('Failed to load accessibility settings from localStorage');
+      }
+    }
+  }, []);
+
   const contextValue: AccessibilityContextType = {
     settings,
     updateSettings,
@@ -156,7 +364,11 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     speak,
     stopSpeaking,
     isSpeaking,
-    speechSupported
+    speechSupported,
+    isLoading,
+    resetToDefaults,
+    exportSettings,
+    importSettings
   };
 
   return (

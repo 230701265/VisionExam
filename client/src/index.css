@@ -336,6 +336,113 @@
     }
   }
 
+  /* Font families for accessibility */
+  .font-dyslexia {
+    font-family: 'OpenDyslexic', 'Comic Sans MS', cursive !important;
+  }
+  
+  .font-serif {
+    font-family: Georgia, 'Times New Roman', serif !important;
+  }
+  
+  .font-mono {
+    font-family: 'Courier New', monospace !important;
+  }
+
+  /* Cursor sizes */
+  .cursor-large {
+    cursor: crosshair;
+  }
+  
+  .cursor-extra-large {
+    cursor: cell;
+  }
+  
+  /* Focus indicator styles */
+  .focus-thick *:focus {
+    outline: 4px solid var(--primary) !important;
+    outline-offset: 3px !important;
+  }
+  
+  .focus-colored *:focus {
+    outline: 3px solid #ff6b35 !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 8px hsla(20, 100%, 60%, 0.3) !important;
+  }
+  
+  .focus-animated *:focus {
+    outline: 3px solid var(--primary) !important;
+    outline-offset: 2px !important;
+    animation: focus-pulse 1.5s ease-in-out infinite alternate;
+  }
+  
+  @keyframes focus-pulse {
+    from {
+      box-shadow: 0 0 0 4px hsla(207, 90%, 54%, 0.4);
+    }
+    to {
+      box-shadow: 0 0 0 8px hsla(207, 90%, 54%, 0.1);
+    }
+  }
+  
+  /* Animation speeds */
+  .animation-slow * {
+    animation-duration: 2s !important;
+    transition-duration: 0.8s !important;
+  }
+  
+  .animation-fast * {
+    animation-duration: 0.1s !important;
+    transition-duration: 0.1s !important;
+  }
+  
+  .animation-off * {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  /* Color themes for colorblind users */
+  .protanopia {
+    filter: contrast(1.2) saturate(0.8) hue-rotate(10deg);
+  }
+  
+  .deuteranopia {
+    filter: contrast(1.2) saturate(0.7) hue-rotate(-10deg);
+  }
+  
+  .tritanopia {
+    filter: contrast(1.1) saturate(0.9) hue-rotate(5deg);
+  }
+  
+  .monochrome {
+    filter: grayscale(100%);
+  }
+  
+  /* Reading mode */
+  .reading-mode {
+    background: #fdf6e3 !important;
+    color: #5c4b37 !important;
+    line-height: 1.8 !important;
+  }
+  
+  .reading-mode * {
+    background: inherit !important;
+    color: inherit !important;
+  }
+  
+  .reading-mode h1, .reading-mode h2, .reading-mode h3, 
+  .reading-mode h4, .reading-mode h5, .reading-mode h6 {
+    color: #2d1b0e !important;
+    margin: 1.5rem 0 1rem 0 !important;
+  }
+  
+  .reading-mode p {
+    margin-bottom: var(--paragraph-spacing, 1rem) !important;
+    text-align: var(--text-align, left) !important;
+    line-height: var(--line-height, 1.6) !important;
+    letter-spacing: var(--letter-spacing, 0px) !important;
+  }
+
   /* Large text support */
   .font-large {
     font-size: 24px;
