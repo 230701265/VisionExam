@@ -34,8 +34,14 @@ export function QuickAccessibilityPanel({ isOpen, onClose }: QuickAccessibilityP
   if (!isOpen) return null;
 
   const handleQuickChange = async (key: keyof typeof settings, value: any) => {
-    await updateSettings({ [key]: value });
-    announceToScreenReader(`${key.replace(/([A-Z])/g, ' $1').toLowerCase()} changed`);
+    try {
+      await updateSettings({ [key]: value });
+      const readableKey = key.replace(/([A-Z])/g, ' $1').toLowerCase().replace(/^./, str => str.toUpperCase());
+      announceToScreenReader(`${readableKey} changed to ${typeof value === 'boolean' ? (value ? 'enabled' : 'disabled') : value}`);
+    } catch (error) {
+      console.error('Failed to update accessibility setting:', error);
+      announceToScreenReader('Setting update failed');
+    }
   };
 
   const quickPresets = [
@@ -43,64 +49,89 @@ export function QuickAccessibilityPanel({ isOpen, onClose }: QuickAccessibilityP
       name: 'High Visibility',
       icon: Eye,
       description: 'Large text, high contrast, enhanced focus',
-      action: () => {
-        updateSettings({
-          fontSize: 24,
-          contrastMode: 'high',
-          focusIndicatorStyle: 'thick',
-          highlightLinks: true
-        });
-        announceToScreenReader('High visibility mode activated');
+      action: async () => {
+        try {
+          await updateSettings({
+            fontSize: 24,
+            contrastMode: 'high',
+            focusIndicatorStyle: 'thick',
+            highlightLinks: true
+          });
+          announceToScreenReader('High visibility mode activated');
+        } catch (error) {
+          announceToScreenReader('Failed to activate high visibility mode');
+        }
       }
     },
     {
       name: 'Motion Sensitive',
       icon: Move,
       description: 'Reduced motion and animations',
-      action: () => {
-        updateSettings({
-          reducedMotion: true,
-          animationSpeed: 'off',
-          parallaxEffects: false,
-          autoplayMedia: false
-        });
-        announceToScreenReader('Motion sensitive mode activated');
+      action: async () => {
+        try {
+          await updateSettings({
+            reducedMotion: true,
+            animationSpeed: 'off',
+            parallaxEffects: false,
+            autoplayMedia: false
+          });
+          announceToScreenReader('Motion sensitive mode activated');
+        } catch (error) {
+          announceToScreenReader('Failed to activate motion sensitive mode');
+        }
       }
     },
     {
       name: 'Audio Focus',
       icon: Headphones,
       description: 'Enhanced audio feedback and instructions',
-      action: () => {
-        updateSettings({
-          speechEnabled: true,
-          audioInstructions: true,
-          announceChanges: true,
-          verboseMode: true
-        });
-        announceToScreenReader('Audio focus mode activated');
+      action: async () => {
+        try {
+          await updateSettings({
+            speechEnabled: true,
+            audioInstructions: true,
+            announceChanges: true,
+            verboseMode: true
+          });
+          announceToScreenReader('Audio focus mode activated');
+        } catch (error) {
+          announceToScreenReader('Failed to activate audio focus mode');
+        }
       }
     },
     {
       name: 'Reading Mode',
       icon: Type,
       description: 'Optimized for reading and focus',
-      action: () => {
-        updateSettings({
-          readingMode: true,
-          fontSize: 20,
-          lineHeight: 1.8,
-          paragraphSpacing: 1.5,
-          fontFamily: 'serif'
-        });
-        announceToScreenReader('Reading mode activated');
+      action: async () => {
+        try {
+          await updateSettings({
+            readingMode: true,
+            fontSize: 20,
+            lineHeight: 1.8,
+            paragraphSpacing: 1.5,
+            fontFamily: 'serif'
+          });
+          announceToScreenReader('Reading mode activated');
+        } catch (error) {
+          announceToScreenReader('Failed to activate reading mode');
+        }
       }
     }
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" role="dialog" aria-labelledby="quick-accessibility-title">
-      <div className="fixed right-4 top-4 bottom-4 w-96 max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex items-start justify-end p-4" 
+      role="dialog" 
+      aria-labelledby="quick-accessibility-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="w-96 max-w-full max-h-[90vh] overflow-y-auto mt-16">
         <Card className="h-full shadow-2xl border-2 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-primary/5">
             <div className="flex items-center space-x-2">
@@ -383,14 +414,27 @@ export function QuickAccessibilityPanel({ isOpen, onClose }: QuickAccessibilityP
               <div className="pt-4 border-t space-y-2">
                 <Button 
                   className="w-full" 
-                  onClick={onClose}
-                  data-testid="button-apply-close"
+                  onClick={() => {
+                    onClose();
+                    // Navigate to full settings page
+                    window.location.href = '/settings';
+                  }}
+                  data-testid="button-open-full-settings"
                 >
                   <Settings className="mr-2 h-4 w-4" />
                   Open Full Settings
                 </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={onClose}
+                  data-testid="button-close-panel"
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Close Panel
+                </Button>
                 <p className="text-xs text-muted-foreground text-center">
-                  Changes are applied instantly. Press Ctrl+A to open full settings.
+                  Changes are applied instantly. Press Alt+A or F11 to toggle this panel.
                 </p>
               </div>
             </CardContent>

@@ -310,19 +310,32 @@ function App() {
   // Keyboard shortcut for accessibility panel
   useEffect(() => {
     const handleKeyboard = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + A for accessibility panel
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && !e.shiftKey) {
+      // Only trigger if not in an input field
+      const isInInput = (e.target as HTMLElement)?.tagName?.toLowerCase() === 'input' || 
+                       (e.target as HTMLElement)?.tagName?.toLowerCase() === 'textarea' ||
+                       (e.target as HTMLElement)?.contentEditable === 'true';
+      
+      // Alt/Option + A for accessibility panel (avoids conflicts with Ctrl+A)
+      if (e.altKey && e.key.toLowerCase() === 'a' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !isInInput) {
         e.preventDefault();
         setIsQuickPanelOpen(prev => !prev);
       }
+      
+      // F11 as alternative shortcut for accessibility panel
+      if (e.key === 'F11' && !isInInput) {
+        e.preventDefault();
+        setIsQuickPanelOpen(prev => !prev);
+      }
+      
       // Escape to close panel
       if (e.key === 'Escape' && isQuickPanelOpen) {
+        e.preventDefault();
         setIsQuickPanelOpen(false);
       }
     };
 
-    window.addEventListener('keydown', handleKeyboard);
-    return () => window.removeEventListener('keydown', handleKeyboard);
+    document.addEventListener('keydown', handleKeyboard, true);
+    return () => document.removeEventListener('keydown', handleKeyboard, true);
   }, [isQuickPanelOpen]);
 
   const handleLogout = () => {
@@ -361,16 +374,17 @@ function App() {
             <InternationalKeyboardHelp />
             
             {/* Floating Accessibility Button */}
-            <div className="fixed bottom-6 right-6 z-40">
+            <div className="fixed bottom-6 right-6 z-[9999] pointer-events-none">
               <Button
                 onClick={() => setIsQuickPanelOpen(true)}
-                className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg focus-visible:outline-2 focus-visible:outline-white transition-all duration-200 hover:scale-105"
-                aria-label="Open quick accessibility settings (Ctrl+A)"
-                title="Quick Accessibility Settings\n\nKeyboard shortcut: Ctrl+A\n\nIncludes: font size, contrast, motion settings, speech controls"
+                className="h-16 w-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl border-2 border-white focus-visible:outline-4 focus-visible:outline-white transition-all duration-200 hover:scale-110 pointer-events-auto"
+                aria-label="Open quick accessibility settings (Alt+A or F11)"
+                title="Quick Accessibility Settings\n\nKeyboard shortcuts: Alt+A or F11\n\nIncludes: font size, contrast, motion settings, speech controls"
                 data-testid="button-quick-accessibility"
               >
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
                 </svg>
               </Button>
             </div>
@@ -388,12 +402,14 @@ function App() {
                   <div>
                     <h3 className="text-lg font-semibold mb-4">Cross-Platform Keyboard Shortcuts</h3>
                     <dl className="text-sm space-y-1">
+                      <div><dt className="inline font-medium">Alt/Option + A:</dt> <dd className="inline">Quick accessibility panel</dd></div>
+                      <div><dt className="inline font-medium">F11:</dt> <dd className="inline">Quick accessibility panel (alternative)</dd></div>
                       <div><dt className="inline font-medium">Alt/Option + Arrows:</dt> <dd className="inline">Navigate elements (WCAG standard)</dd></div>
                       <div><dt className="inline font-medium">Alt/Option + M/N/F:</dt> <dd className="inline">Jump to main/nav/footer regions</dd></div>
                       <div><dt className="inline font-medium">Alt/Option + H/B/L/I:</dt> <dd className="inline">Next heading/button/link/input</dd></div>
                       <div><dt className="inline font-medium">Alt/Option + 1-6:</dt> <dd className="inline">Jump to heading levels</dd></div>
                       <div><dt className="inline font-medium">F5/F9:</dt> <dd className="inline">Run/reset code (VS Code)</dd></div>
-                      <div><dt className="inline font-medium">Ctrl+Alt/Cmd+Option+H:</dt> <dd className="inline">Help menu</dd></div>
+                      <div><dt className="inline font-medium">Escape:</dt> <dd className="inline">Close panels and dialogs</dd></div>
                     </dl>
                   </div>
                   <div>
