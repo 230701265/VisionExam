@@ -358,36 +358,74 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AccessibilityProvider>
-          <div className="min-h-screen bg-background text-foreground">
-            {/* Skip Links */}
-            <div className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50">
-              <a href="#main-content" className="bg-primary text-white px-4 py-2 rounded focus-visible:outline-2 focus-visible:outline-white">
+          <div className="min-h-screen bg-background text-foreground flex flex-col">
+            {/* Enhanced Skip Links */}
+            <div className="sr-only focus-within:not-sr-only focus-within:absolute focus-within:top-4 focus-within:left-4 z-[10000] flex gap-2">
+              <a 
+                href="#main-content" 
+                className="bg-primary text-primary-foreground px-4 py-3 rounded-lg font-medium shadow-lg focus-visible:outline-4 focus-visible:outline-white transition-all duration-200"
+                data-testid="skip-to-main"
+              >
                 Skip to main content
               </a>
-              <a href="#navigation" className="bg-primary text-white px-4 py-2 rounded ml-2 focus-visible:outline-2 focus-visible:outline-white">
+              <a 
+                href="#navigation" 
+                className="bg-secondary text-secondary-foreground px-4 py-3 rounded-lg font-medium shadow-lg focus-visible:outline-4 focus-visible:outline-white transition-all duration-200"
+                data-testid="skip-to-navigation"
+              >
                 Skip to navigation
+              </a>
+              <a 
+                href="#accessibility-controls" 
+                className="bg-blue-600 text-white px-4 py-3 rounded-lg font-medium shadow-lg focus-visible:outline-4 focus-visible:outline-white transition-all duration-200"
+                data-testid="skip-to-accessibility"
+              >
+                Skip to accessibility controls
               </a>
             </div>
 
             <Navigation currentUser={currentUser} onLogout={handleLogout} />
-            <Router currentUser={currentUser} />
+            
+            {/* Main Content Area */}
+            <main id="main-content" role="main" className="flex-1 relative" tabIndex={-1}>
+              <Router currentUser={currentUser} />
+            </main>
+            
             <InternationalKeyboardHelp />
             
-            {/* Floating Accessibility Button */}
-            <div className="fixed bottom-6 right-6 z-[9999] pointer-events-none">
-              <Button
-                onClick={() => setIsQuickPanelOpen(true)}
-                className="h-16 w-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl border-2 border-white focus-visible:outline-4 focus-visible:outline-white transition-all duration-200 hover:scale-110 pointer-events-auto"
-                aria-label="Open quick accessibility settings (Alt+A or F11)"
-                title="Quick Accessibility Settings\n\nKeyboard shortcuts: Alt+A or F11\n\nIncludes: font size, contrast, motion settings, speech controls"
-                data-testid="button-quick-accessibility"
-              >
-                <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
-                </svg>
-              </Button>
-            </div>
+            {/* Enhanced Accessibility Controls */}
+            <aside 
+              id="accessibility-controls" 
+              className="fixed bottom-6 right-6 z-[9999] pointer-events-none"
+              role="complementary"
+              aria-label="Accessibility controls"
+            >
+              <div className="flex flex-col gap-3 items-end">
+                {/* Quick Accessibility Button */}
+                <Button
+                  onClick={() => setIsQuickPanelOpen(true)}
+                  className="h-16 w-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl border-2 border-white focus-visible:outline-4 focus-visible:outline-blue-300 transition-all duration-200 hover:scale-110 pointer-events-auto relative"
+                  aria-label="Open quick accessibility settings (Alt+A or F11)"
+                  aria-expanded={isQuickPanelOpen}
+                  aria-haspopup="dialog"
+                  title="Quick Accessibility Settings\n\nKeyboard shortcuts: Alt+A or F11\n\nIncludes: font size, contrast, motion settings, speech controls"
+                  data-testid="button-quick-accessibility"
+                >
+                  <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                  </svg>
+                  {/* Active indicator */}
+                  {isQuickPanelOpen && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-white" aria-hidden="true" />
+                  )}
+                </Button>
+                
+                {/* Accessibility hint */}
+                <div className="bg-black/80 text-white text-xs px-2 py-1 rounded pointer-events-auto opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
+                  Alt+A or F11
+                </div>
+              </div>
+            </aside>
             
             {/* Quick Accessibility Panel */}
             <QuickAccessibilityPanel 
