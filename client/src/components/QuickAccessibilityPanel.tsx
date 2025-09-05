@@ -208,430 +208,341 @@ export function QuickAccessibilityPanel({ isOpen, onClose }: QuickAccessibilityP
 
   return (
     <div 
-      className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-md flex items-center justify-center p-4" 
+      className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex items-start justify-end p-4" 
       role="dialog" 
       aria-labelledby="quick-accessibility-title"
-      aria-describedby="quick-accessibility-desc"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
-      <div className="w-full max-w-2xl max-h-[85vh] overflow-hidden">
-        <Card className="shadow-2xl border-2 border-primary/30 bg-background/95 backdrop-blur-sm">
-          {/* Enhanced Header */}
-          <CardHeader className="bg-gradient-to-r from-primary/10 to-blue-600/10 border-b border-border/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-primary rounded-lg">
-                  <Zap className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <CardTitle id="quick-accessibility-title" className="text-xl font-bold">
-                    Quick Accessibility
-                  </CardTitle>
-                  <p id="quick-accessibility-desc" className="text-sm text-muted-foreground mt-1">
-                    Instantly adjust settings for better accessibility
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsCollapsed(!isCollapsed)}
-                  aria-label={isCollapsed ? "Expand controls" : "Minimize controls"}
-                  data-testid="button-toggle-collapse"
-                  className="rounded-lg hover:bg-primary/10"
-                >
-                  {isCollapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onClose}
-                  aria-label="Close accessibility panel"
-                  data-testid="button-close-panel"
-                  className="rounded-lg hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
+      <div className="w-96 max-w-full max-h-[90vh] overflow-y-auto mt-16">
+        <Card className="h-full shadow-2xl border-2 border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-primary/5">
+            <div className="flex items-center space-x-2">
+              <Zap className="h-5 w-5 text-primary" />
+              <CardTitle id="quick-accessibility-title" className="text-lg">
+                Quick Accessibility
+              </CardTitle>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                aria-label={isCollapsed ? "Expand panel" : "Collapse panel"}
+                data-testid="button-toggle-collapse"
+              >
+                {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                aria-label="Close accessibility panel"
+                data-testid="button-close-panel"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </CardHeader>
 
           {!isCollapsed && (
-            <CardContent className="max-h-[calc(85vh-120px)] overflow-y-auto">
-              <div className="space-y-8 p-6">
-                {/* Quick Presets Section */}
-                <section aria-labelledby="presets-heading">
-                  <h3 id="presets-heading" className="text-lg font-bold mb-4 flex items-center border-b border-border/50 pb-2">
-                    <Zap className="mr-3 h-5 w-5 text-primary" />
-                    Quick Presets
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {quickPresets.map((preset, index) => (
-                      <Button
-                        key={index}
-                        variant={preset.isActive ? "default" : "outline"}
-                        size="lg"
-                        className={`
-                          justify-start h-auto p-4 text-left transition-all duration-300 group
-                          ${preset.isActive 
-                            ? 'bg-primary text-primary-foreground border-primary shadow-lg scale-105' 
-                            : 'hover:bg-primary/5 hover:border-primary/50 hover:scale-102'
-                          }
-                        `}
-                        onClick={preset.action}
-                        data-testid={`button-preset-${index}`}
-                        aria-pressed={preset.isActive}
-                        title={`${preset.name} - Click to ${preset.isActive ? 'deactivate' : 'activate'}`}
-                      >
-                        <div className="flex items-start space-x-3 w-full">
-                          <div className={`
-                            p-2 rounded-lg transition-all duration-200
-                            ${preset.isActive 
-                              ? 'bg-primary-foreground/20' 
-                              : 'bg-primary/10 group-hover:bg-primary/20'
-                            }
-                          `}>
-                            <preset.icon className={`h-5 w-5 ${
-                              preset.isActive ? 'text-primary-foreground' : 'text-primary'
-                            }`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className={`font-semibold flex items-center justify-between ${
-                              preset.isActive ? 'text-primary-foreground' : 'text-foreground'
-                            }`}>
-                              <span className="truncate">{preset.name}</span>
-                              {preset.isActive && (
-                                <span className="ml-2 text-xs px-2 py-1 bg-green-500 text-white rounded-full font-bold shadow-sm">
-                                  ACTIVE
-                                </span>
-                              )}
-                            </div>
-                            <p className={`text-sm mt-1 ${
-                              preset.isActive ? 'text-primary-foreground/90' : 'text-muted-foreground'
-                            }`}>
-                              {preset.description}
-                            </p>
-                          </div>
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
-                </section>
-
-                {/* Quick Controls Grid */}
-                <section aria-labelledby="controls-heading">
-                  <h3 id="controls-heading" className="text-lg font-bold mb-4 flex items-center border-b border-border/50 pb-2">
-                    <Settings className="mr-3 h-5 w-5 text-primary" />
-                    Quick Controls
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Visual Controls */}
-                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border/30">
-                      <h4 className="font-semibold flex items-center text-sm">
-                        <Monitor className="mr-2 h-4 w-4 text-blue-600" />
-                        Visual Settings
-                      </h4>
-                      
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium mb-2 block flex items-center justify-between">
-                            <span>Font Size</span>
-                            <span className="text-primary font-bold">{settings.fontSize}px</span>
-                          </label>
-                          <Slider
-                            min={14}
-                            max={32}
-                            step={2}
-                            value={[settings.fontSize]}
-                            onValueChange={([value]) => handleQuickChange('fontSize', value)}
-                            className="w-full"
-                            data-testid="slider-quick-font-size"
-                          />
-                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                            <span>Small</span>
-                            <span>Large</span>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">
-                            Contrast Mode
-                          </label>
-                          <Select
-                            value={settings.contrastMode}
-                            onValueChange={(value: 'normal' | 'high' | 'dark') => handleQuickChange('contrastMode', value)}
-                          >
-                            <SelectTrigger className="h-10" data-testid="select-quick-contrast">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="normal">🌟 Normal</SelectItem>
-                              <SelectItem value="high">⚡ High Contrast</SelectItem>
-                              <SelectItem value="dark">🌙 Dark Mode</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">
-                            Color Support
-                          </label>
-                          <Select
-                            value={settings.colorTheme}
-                            onValueChange={(value) => handleQuickChange('colorTheme', value)}
-                          >
-                            <SelectTrigger className="h-10" data-testid="select-quick-color-theme">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="default">🎨 Default Colors</SelectItem>
-                              <SelectItem value="protanopia">🔴 Protanopia Support</SelectItem>
-                              <SelectItem value="deuteranopia">🟢 Deuteranopia Support</SelectItem>
-                              <SelectItem value="tritanopia">🔵 Tritanopia Support</SelectItem>
-                              <SelectItem value="monochrome">⚫ Monochrome</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Audio Controls */}
-                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border/30">
-                      <h4 className="font-semibold flex items-center text-sm">
-                        <Volume2 className="mr-2 h-4 w-4 text-green-600" />
-                        Audio Settings
-                      </h4>
-                      
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
-                          <div>
-                            <label className="text-sm font-medium block">
-                              Text-to-Speech
-                            </label>
-                            <p className="text-xs text-muted-foreground">Enable audio narration</p>
-                          </div>
-                          <Switch
-                            checked={settings.speechEnabled}
-                            onCheckedChange={(checked) => handleQuickChange('speechEnabled', checked)}
-                            data-testid="switch-quick-speech"
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
-                          <div>
-                            <label className="text-sm font-medium block">
-                              Audio Instructions
-                            </label>
-                            <p className="text-xs text-muted-foreground">Spoken guidance</p>
-                          </div>
-                          <Switch
-                            checked={settings.audioInstructions}
-                            onCheckedChange={(checked) => handleQuickChange('audioInstructions', checked)}
-                            data-testid="switch-quick-audio-instructions"
-                          />
-                        </div>
-
-                        {settings.speechEnabled && (
-                          <>
-                            <div>
-                              <label className="text-sm font-medium mb-2 block flex items-center justify-between">
-                                <span>Speech Rate</span>
-                                <span className="text-primary font-bold">{(settings.speechRate / 10).toFixed(1)}x</span>
-                              </label>
-                              <Slider
-                                min={5}
-                                max={20}
-                                step={1}
-                                value={[settings.speechRate]}
-                                onValueChange={([value]) => handleQuickChange('speechRate', value)}
-                                className="w-full"
-                                data-testid="slider-quick-speech-rate"
-                              />
-                              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                <span>Slow</span>
-                                <span>Fast</span>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="text-sm font-medium mb-2 block flex items-center justify-between">
-                                <span>Volume</span>
-                                <span className="text-primary font-bold">{settings.speechVolume}%</span>
-                              </label>
-                              <Slider
-                                min={0}
-                                max={100}
-                                step={5}
-                                value={[settings.speechVolume]}
-                                onValueChange={([value]) => handleQuickChange('speechVolume', value)}
-                                className="w-full"
-                                data-testid="slider-quick-volume"
-                              />
-                              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                <span>Quiet</span>
-                                <span>Loud</span>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Motion & Navigation Section */}
-                <section aria-labelledby="motion-nav-heading">
-                  <h3 id="motion-nav-heading" className="text-lg font-bold mb-4 flex items-center border-b border-border/50 pb-2">
-                    <Move className="mr-3 h-5 w-5 text-primary" />
-                    Motion & Navigation
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Motion Controls */}
-                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border/30">
-                      <h4 className="font-semibold flex items-center text-sm">
-                        <Move className="mr-2 h-4 w-4 text-orange-600" />
-                        Motion Settings
-                      </h4>
-                      
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
-                          <div>
-                            <label className="text-sm font-medium block">
-                              Reduce Motion
-                            </label>
-                            <p className="text-xs text-muted-foreground">Minimize animations</p>
-                          </div>
-                          <Switch
-                            checked={settings.reducedMotion}
-                            onCheckedChange={(checked) => handleQuickChange('reducedMotion', checked)}
-                            data-testid="switch-quick-reduced-motion"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">
-                            Animation Speed
-                          </label>
-                          <Select
-                            value={settings.animationSpeed}
-                            onValueChange={(value) => handleQuickChange('animationSpeed', value)}
-                          >
-                            <SelectTrigger className="h-10" data-testid="select-quick-animation-speed">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="slow">🐌 Slow</SelectItem>
-                              <SelectItem value="normal">⚡ Normal</SelectItem>
-                              <SelectItem value="fast">🚀 Fast</SelectItem>
-                              <SelectItem value="off">🚫 Off</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Navigation Controls */}
-                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border/30">
-                      <h4 className="font-semibold flex items-center text-sm">
-                        <Focus className="mr-2 h-4 w-4 text-purple-600" />
-                        Navigation Settings
-                      </h4>
-                      
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
-                          <div>
-                            <label className="text-sm font-medium block">
-                              Skip Links Visible
-                            </label>
-                            <p className="text-xs text-muted-foreground">Show navigation shortcuts</p>
-                          </div>
-                          <Switch
-                            checked={settings.skipLinksVisible}
-                            onCheckedChange={(checked) => handleQuickChange('skipLinksVisible', checked)}
-                            data-testid="switch-quick-skip-links"
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
-                          <div>
-                            <label className="text-sm font-medium block">
-                              Highlight Links
-                            </label>
-                            <p className="text-xs text-muted-foreground">Make links more visible</p>
-                          </div>
-                          <Switch
-                            checked={settings.highlightLinks}
-                            onCheckedChange={(checked) => handleQuickChange('highlightLinks', checked)}
-                            data-testid="switch-quick-highlight-links"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">
-                            Focus Style
-                          </label>
-                          <Select
-                            value={settings.focusIndicatorStyle}
-                            onValueChange={(value) => handleQuickChange('focusIndicatorStyle', value)}
-                          >
-                            <SelectTrigger className="h-10" data-testid="select-quick-focus-style">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="default">⚪ Default</SelectItem>
-                              <SelectItem value="thick">⚫ Thick Border</SelectItem>
-                              <SelectItem value="colored">🌈 Colored</SelectItem>
-                              <SelectItem value="animated">✨ Animated</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Action Buttons */}
-                <section className="pt-6 border-t border-border/50">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Button 
-                      size="lg"
-                      className="h-12" 
-                      onClick={() => {
-                        onClose();
-                        window.location.href = '/settings';
-                      }}
-                      data-testid="button-open-full-settings"
+            <CardContent className="space-y-6 p-6">
+              {/* Quick Presets */}
+              <div>
+                <h3 className="font-semibold mb-4 flex items-center">
+                  <Zap className="mr-2 h-4 w-4" />
+                  Quick Presets
+                </h3>
+                <div className="grid grid-cols-1 gap-2">
+                  {quickPresets.map((preset, index) => (
+                    <Button
+                      key={index}
+                      variant={preset.isActive ? "default" : "outline"}
+                      size="sm"
+                      className={`justify-start h-auto p-3 text-left transition-all duration-200 ${
+                        preset.isActive 
+                          ? 'bg-primary text-primary-foreground border-primary shadow-md' 
+                          : 'hover:bg-primary/5'
+                      }`}
+                      onClick={preset.action}
+                      data-testid={`button-preset-${index}`}
+                      aria-pressed={preset.isActive}
+                      title={`${preset.name} - Click to ${preset.isActive ? 'deactivate' : 'activate'}`}
                     >
-                      <Settings className="mr-2 h-5 w-5" />
-                      Full Settings
+                      <preset.icon className={`h-4 w-4 mr-3 flex-shrink-0 ${
+                        preset.isActive ? 'text-primary-foreground' : ''
+                      }`} />
+                      <div className="flex-1">
+                        <div className={`font-medium flex items-center justify-between ${
+                          preset.isActive ? 'text-primary-foreground' : ''
+                        }`}>
+                          {preset.name}
+                          {preset.isActive && (
+                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-primary-foreground/20 rounded-full">
+                              ON
+                            </span>
+                          )}
+                        </div>
+                        <div className={`text-xs ${
+                          preset.isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                        }`}>
+                          {preset.description}
+                        </div>
+                      </div>
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="lg"
-                      className="h-12" 
-                      onClick={onClose}
-                      data-testid="button-close-panel"
+                  ))}
+                </div>
+              </div>
+
+              {/* Visual Controls */}
+              <div className="space-y-4">
+                <h3 className="font-semibold flex items-center">
+                  <Monitor className="mr-2 h-4 w-4" />
+                  Visual
+                </h3>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">
+                      Font Size: {settings.fontSize}px
+                    </label>
+                    <Slider
+                      min={14}
+                      max={32}
+                      step={2}
+                      value={[settings.fontSize]}
+                      onValueChange={([value]) => handleQuickChange('fontSize', value)}
+                      className="w-full"
+                      data-testid="slider-quick-font-size"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">
+                      Contrast Mode
+                    </label>
+                    <Select
+                      value={settings.contrastMode}
+                      onValueChange={(value: 'normal' | 'high' | 'dark') => handleQuickChange('contrastMode', value)}
                     >
-                      <X className="mr-2 h-5 w-5" />
-                      Close Panel
-                    </Button>
+                      <SelectTrigger className="h-8" data-testid="select-quick-contrast">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="high">High Contrast</SelectItem>
+                        <SelectItem value="dark">Dark Mode</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="text-center mt-4 p-3 bg-muted/20 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">
-                      <strong>Keyboard Shortcuts:</strong> Alt+A or F11 to toggle this panel
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Changes are applied instantly and saved automatically
-                    </p>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">
+                      Color Support
+                    </label>
+                    <Select
+                      value={settings.colorTheme}
+                      onValueChange={(value) => handleQuickChange('colorTheme', value)}
+                    >
+                      <SelectTrigger className="h-8" data-testid="select-quick-color-theme">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Default</SelectItem>
+                        <SelectItem value="protanopia">Protanopia</SelectItem>
+                        <SelectItem value="deuteranopia">Deuteranopia</SelectItem>
+                        <SelectItem value="tritanopia">Tritanopia</SelectItem>
+                        <SelectItem value="monochrome">Monochrome</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                </section>
+                </div>
+              </div>
+
+              {/* Audio Controls */}
+              <div className="space-y-4">
+                <h3 className="font-semibold flex items-center">
+                  <Volume2 className="mr-2 h-4 w-4" />
+                  Audio
+                </h3>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">
+                      Text-to-Speech
+                    </label>
+                    <Switch
+                      checked={settings.speechEnabled}
+                      onCheckedChange={(checked) => handleQuickChange('speechEnabled', checked)}
+                      data-testid="switch-quick-speech"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">
+                      Audio Instructions
+                    </label>
+                    <Switch
+                      checked={settings.audioInstructions}
+                      onCheckedChange={(checked) => handleQuickChange('audioInstructions', checked)}
+                      data-testid="switch-quick-audio-instructions"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">
+                      Speech Rate: {(settings.speechRate / 10).toFixed(1)}x
+                    </label>
+                    <Slider
+                      min={5}
+                      max={20}
+                      step={1}
+                      value={[settings.speechRate]}
+                      onValueChange={([value]) => handleQuickChange('speechRate', value)}
+                      className="w-full"
+                      data-testid="slider-quick-speech-rate"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">
+                      Volume: {settings.speechVolume}%
+                    </label>
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={[settings.speechVolume]}
+                      onValueChange={([value]) => handleQuickChange('speechVolume', value)}
+                      className="w-full"
+                      data-testid="slider-quick-volume"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Motion Controls */}
+              <div className="space-y-4">
+                <h3 className="font-semibold flex items-center">
+                  <Move className="mr-2 h-4 w-4" />
+                  Motion
+                </h3>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">
+                      Reduce Motion
+                    </label>
+                    <Switch
+                      checked={settings.reducedMotion}
+                      onCheckedChange={(checked) => handleQuickChange('reducedMotion', checked)}
+                      data-testid="switch-quick-reduced-motion"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">
+                      Animation Speed
+                    </label>
+                    <Select
+                      value={settings.animationSpeed}
+                      onValueChange={(value) => handleQuickChange('animationSpeed', value)}
+                    >
+                      <SelectTrigger className="h-8" data-testid="select-quick-animation-speed">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="slow">Slow</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="fast">Fast</SelectItem>
+                        <SelectItem value="off">Off</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation */}
+              <div className="space-y-4">
+                <h3 className="font-semibold flex items-center">
+                  <Focus className="mr-2 h-4 w-4" />
+                  Navigation
+                </h3>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">
+                      Skip Links Visible
+                    </label>
+                    <Switch
+                      checked={settings.skipLinksVisible}
+                      onCheckedChange={(checked) => handleQuickChange('skipLinksVisible', checked)}
+                      data-testid="switch-quick-skip-links"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">
+                      Highlight Links
+                    </label>
+                    <Switch
+                      checked={settings.highlightLinks}
+                      onCheckedChange={(checked) => handleQuickChange('highlightLinks', checked)}
+                      data-testid="switch-quick-highlight-links"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">
+                      Focus Style
+                    </label>
+                    <Select
+                      value={settings.focusIndicatorStyle}
+                      onValueChange={(value) => handleQuickChange('focusIndicatorStyle', value)}
+                    >
+                      <SelectTrigger className="h-8" data-testid="select-quick-focus-style">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Default</SelectItem>
+                        <SelectItem value="thick">Thick</SelectItem>
+                        <SelectItem value="colored">Colored</SelectItem>
+                        <SelectItem value="animated">Animated</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 border-t space-y-2">
+                <Button 
+                  className="w-full" 
+                  onClick={() => {
+                    onClose();
+                    // Navigate to full settings page
+                    window.location.href = '/settings';
+                  }}
+                  data-testid="button-open-full-settings"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Open Full Settings
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={onClose}
+                  data-testid="button-close-panel"
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Close Panel
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Changes are applied instantly. Press Alt+A or F11 to toggle this panel.
+                </p>
               </div>
             </CardContent>
           )}
