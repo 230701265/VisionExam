@@ -50,8 +50,8 @@ export function Navigation({ currentUser, onLogout }: NavigationProps) {
                 <li key={item.href}>
                   <Link 
                     href={item.href}
-                    className={`hover:underline focus-visible:outline-2 focus-visible:outline-white ${
-                      location === item.href ? 'font-semibold' : ''
+                    className={`text-white hover:underline focus-visible:outline-2 focus-visible:outline-white transition-colors ${
+                      location === item.href ? 'font-semibold text-white/90' : 'text-white/80 hover:text-white'
                     }`}
                     aria-current={location === item.href ? 'page' : undefined}
                     onClick={() => handleNavigation(item.label)}
