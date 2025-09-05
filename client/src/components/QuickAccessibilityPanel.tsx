@@ -30,6 +30,39 @@ interface QuickAccessibilityPanelProps {
 export function QuickAccessibilityPanel({ isOpen, onClose }: QuickAccessibilityPanelProps) {
   const { settings, updateSettings, announceToScreenReader } = useAccessibility();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  // Default settings for toggling back to normal
+  const defaultSettings = {
+    fontSize: 18,
+    contrastMode: 'normal' as const,
+    focusIndicatorStyle: 'default' as const,
+    highlightLinks: false,
+    reducedMotion: false,
+    animationSpeed: 'normal' as const,
+    parallaxEffects: true,
+    autoplayMedia: true,
+    speechEnabled: false,
+    audioInstructions: true,
+    announceChanges: true,
+    verboseMode: false,
+    readingMode: false,
+    lineHeight: 1.6,
+    paragraphSpacing: 1,
+    fontFamily: 'default' as const
+  };
+  
+  // Check if presets are active
+  const isHighVisibilityActive = settings.fontSize === 24 && settings.contrastMode === 'high' && 
+    settings.focusIndicatorStyle === 'thick' && settings.highlightLinks;
+    
+  const isMotionSensitiveActive = settings.reducedMotion && settings.animationSpeed === 'off' && 
+    !settings.parallaxEffects && !settings.autoplayMedia;
+    
+  const isAudioFocusActive = settings.speechEnabled && settings.audioInstructions && 
+    settings.announceChanges && settings.verboseMode;
+    
+  const isReadingModeActive = settings.readingMode && settings.fontSize === 20 && 
+    settings.lineHeight === 1.8 && settings.paragraphSpacing === 1.5 && settings.fontFamily === 'serif';
 
   if (!isOpen) return null;
 
@@ -49,17 +82,30 @@ export function QuickAccessibilityPanel({ isOpen, onClose }: QuickAccessibilityP
       name: 'High Visibility',
       icon: Eye,
       description: 'Large text, high contrast, enhanced focus',
+      isActive: isHighVisibilityActive,
       action: async () => {
         try {
-          await updateSettings({
-            fontSize: 24,
-            contrastMode: 'high',
-            focusIndicatorStyle: 'thick',
-            highlightLinks: true
-          });
-          announceToScreenReader('High visibility mode activated');
+          if (isHighVisibilityActive) {
+            // Toggle off - restore defaults
+            await updateSettings({
+              fontSize: defaultSettings.fontSize,
+              contrastMode: defaultSettings.contrastMode,
+              focusIndicatorStyle: defaultSettings.focusIndicatorStyle,
+              highlightLinks: defaultSettings.highlightLinks
+            });
+            announceToScreenReader('High visibility mode deactivated');
+          } else {
+            // Toggle on - apply preset
+            await updateSettings({
+              fontSize: 24,
+              contrastMode: 'high',
+              focusIndicatorStyle: 'thick',
+              highlightLinks: true
+            });
+            announceToScreenReader('High visibility mode activated');
+          }
         } catch (error) {
-          announceToScreenReader('Failed to activate high visibility mode');
+          announceToScreenReader('Failed to toggle high visibility mode');
         }
       }
     },
@@ -67,17 +113,30 @@ export function QuickAccessibilityPanel({ isOpen, onClose }: QuickAccessibilityP
       name: 'Motion Sensitive',
       icon: Move,
       description: 'Reduced motion and animations',
+      isActive: isMotionSensitiveActive,
       action: async () => {
         try {
-          await updateSettings({
-            reducedMotion: true,
-            animationSpeed: 'off',
-            parallaxEffects: false,
-            autoplayMedia: false
-          });
-          announceToScreenReader('Motion sensitive mode activated');
+          if (isMotionSensitiveActive) {
+            // Toggle off - restore defaults
+            await updateSettings({
+              reducedMotion: defaultSettings.reducedMotion,
+              animationSpeed: defaultSettings.animationSpeed,
+              parallaxEffects: defaultSettings.parallaxEffects,
+              autoplayMedia: defaultSettings.autoplayMedia
+            });
+            announceToScreenReader('Motion sensitive mode deactivated');
+          } else {
+            // Toggle on - apply preset
+            await updateSettings({
+              reducedMotion: true,
+              animationSpeed: 'off',
+              parallaxEffects: false,
+              autoplayMedia: false
+            });
+            announceToScreenReader('Motion sensitive mode activated');
+          }
         } catch (error) {
-          announceToScreenReader('Failed to activate motion sensitive mode');
+          announceToScreenReader('Failed to toggle motion sensitive mode');
         }
       }
     },
@@ -85,17 +144,30 @@ export function QuickAccessibilityPanel({ isOpen, onClose }: QuickAccessibilityP
       name: 'Audio Focus',
       icon: Headphones,
       description: 'Enhanced audio feedback and instructions',
+      isActive: isAudioFocusActive,
       action: async () => {
         try {
-          await updateSettings({
-            speechEnabled: true,
-            audioInstructions: true,
-            announceChanges: true,
-            verboseMode: true
-          });
-          announceToScreenReader('Audio focus mode activated');
+          if (isAudioFocusActive) {
+            // Toggle off - restore defaults
+            await updateSettings({
+              speechEnabled: defaultSettings.speechEnabled,
+              audioInstructions: defaultSettings.audioInstructions,
+              announceChanges: defaultSettings.announceChanges,
+              verboseMode: defaultSettings.verboseMode
+            });
+            announceToScreenReader('Audio focus mode deactivated');
+          } else {
+            // Toggle on - apply preset
+            await updateSettings({
+              speechEnabled: true,
+              audioInstructions: true,
+              announceChanges: true,
+              verboseMode: true
+            });
+            announceToScreenReader('Audio focus mode activated');
+          }
         } catch (error) {
-          announceToScreenReader('Failed to activate audio focus mode');
+          announceToScreenReader('Failed to toggle audio focus mode');
         }
       }
     },
@@ -103,18 +175,32 @@ export function QuickAccessibilityPanel({ isOpen, onClose }: QuickAccessibilityP
       name: 'Reading Mode',
       icon: Type,
       description: 'Optimized for reading and focus',
+      isActive: isReadingModeActive,
       action: async () => {
         try {
-          await updateSettings({
-            readingMode: true,
-            fontSize: 20,
-            lineHeight: 1.8,
-            paragraphSpacing: 1.5,
-            fontFamily: 'serif'
-          });
-          announceToScreenReader('Reading mode activated');
+          if (isReadingModeActive) {
+            // Toggle off - restore defaults
+            await updateSettings({
+              readingMode: defaultSettings.readingMode,
+              fontSize: defaultSettings.fontSize,
+              lineHeight: defaultSettings.lineHeight,
+              paragraphSpacing: defaultSettings.paragraphSpacing,
+              fontFamily: defaultSettings.fontFamily
+            });
+            announceToScreenReader('Reading mode deactivated');
+          } else {
+            // Toggle on - apply preset
+            await updateSettings({
+              readingMode: true,
+              fontSize: 20,
+              lineHeight: 1.8,
+              paragraphSpacing: 1.5,
+              fontFamily: 'serif'
+            });
+            announceToScreenReader('Reading mode activated');
+          }
         } catch (error) {
-          announceToScreenReader('Failed to activate reading mode');
+          announceToScreenReader('Failed to toggle reading mode');
         }
       }
     }
@@ -174,16 +260,37 @@ export function QuickAccessibilityPanel({ isOpen, onClose }: QuickAccessibilityP
                   {quickPresets.map((preset, index) => (
                     <Button
                       key={index}
-                      variant="outline"
+                      variant={preset.isActive ? "default" : "outline"}
                       size="sm"
-                      className="justify-start h-auto p-3 text-left"
+                      className={`justify-start h-auto p-3 text-left transition-all duration-200 ${
+                        preset.isActive 
+                          ? 'bg-primary text-primary-foreground border-primary shadow-md' 
+                          : 'hover:bg-primary/5'
+                      }`}
                       onClick={preset.action}
                       data-testid={`button-preset-${index}`}
+                      aria-pressed={preset.isActive}
+                      title={`${preset.name} - Click to ${preset.isActive ? 'deactivate' : 'activate'}`}
                     >
-                      <preset.icon className="h-4 w-4 mr-3 flex-shrink-0" />
-                      <div>
-                        <div className="font-medium">{preset.name}</div>
-                        <div className="text-xs text-muted-foreground">{preset.description}</div>
+                      <preset.icon className={`h-4 w-4 mr-3 flex-shrink-0 ${
+                        preset.isActive ? 'text-primary-foreground' : ''
+                      }`} />
+                      <div className="flex-1">
+                        <div className={`font-medium flex items-center justify-between ${
+                          preset.isActive ? 'text-primary-foreground' : ''
+                        }`}>
+                          {preset.name}
+                          {preset.isActive && (
+                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-primary-foreground/20 rounded-full">
+                              ON
+                            </span>
+                          )}
+                        </div>
+                        <div className={`text-xs ${
+                          preset.isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                        }`}>
+                          {preset.description}
+                        </div>
                       </div>
                     </Button>
                   ))}
