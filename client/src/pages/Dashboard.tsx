@@ -1,17 +1,34 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AudioControls } from '@/components/AudioControls';
 import { useAccessibility } from '@/components/AccessibilityProvider';
 import { TeacherDashboard } from './TeacherDashboard';
 import type { Exam, ExamAttemptWithDetails } from '@shared/schema';
-import { Clock, FileText, Users, Calendar } from 'lucide-react';
+import {
+  Clock,
+  FileText,
+  Calendar,
+  ChevronRight,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  BookOpen,
+  ArrowUpRight,
+  Trophy,
+  Timer
+} from 'lucide-react';
 
 interface DashboardProps {
   currentUser: { id: string; username: string; role: string };
+}
+
+function SkeletonCard() {
+  return (
+    <div className="skeleton h-36 w-full rounded-xl" aria-hidden="true" />
+  );
 }
 
 export default function Dashboard({ currentUser }: DashboardProps) {
@@ -26,243 +43,288 @@ export default function Dashboard({ currentUser }: DashboardProps) {
     enabled: currentUser.role === 'student',
   });
 
-  // For teachers: get all exam attempts for their exams
-  const { data: teacherAttempts = [], isLoading: teacherAttemptsLoading } = useQuery<ExamAttemptWithDetails[]>({
-    queryKey: ['/api/attempts/instructor', currentUser.id],
-    enabled: currentUser.role === 'instructor',
-  });
-
   const handleStartExam = (examTitle: string) => {
-    announceToScreenReader(`Starting ${examTitle}. You will be navigated to the exam interface with full keyboard navigation and audio support. Remember: Alt+R to read questions, Alt+N for next, Alt+P for previous, Alt+F to flag questions.`);
+    announceToScreenReader(`Starting ${examTitle}. Full keyboard and audio support available.`);
   };
 
   const formatDuration = (minutes: number) => {
-    if (minutes < 60) return `${minutes} minutes`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    return `${hours} hour${hours > 1 ? 's' : ''}${remainingMinutes > 0 ? ` ${remainingMinutes} minutes` : ''}`;
+    if (minutes < 60) return `${minutes}m`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h}h${m > 0 ? ` ${m}m` : ''}`;
   };
 
-  const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+  const formatDate = (date: Date | string) =>
+    new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  const getPassingStatus = (score: number, total: number) => {
-    const percentage = (score / total) * 100;
-    return percentage >= 70 ? 'Passed' : 'Failed';
-  };
+  const isPassed = (score: number, total: number) => (score / total) * 100 >= 70;
+
+  const completedAttempts = attempts.filter(a => a.completedAt);
+  const passedCount = completedAttempts.filter(a => a.score && isPassed(a.score, a.totalQuestions)).length;
+
+  if (currentUser.role === 'instructor') {
+    return (
+      <main id="main-content" role="main" className="max-w-7xl mx-auto px-4 sm:px-6 py-8 page-enter">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            Welcome back, <span className="text-primary">{currentUser.username}</span>
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">Manage your exams and review student performance.</p>
+        </div>
+        <TeacherDashboard currentUser={currentUser} exams={exams} examsLoading={examsLoading} />
+      </main>
+    );
+  }
 
   return (
-    <main id="main-content" role="main" className="max-w-4xl mx-auto px-6 py-8">
-      <section aria-labelledby="dashboard-heading">
-        <div className="mb-8">
-          <h2 id="dashboard-heading" className="text-3xl font-bold mb-4">
-            Welcome to OPSIS, {currentUser.username}
-          </h2>
-          <p className="text-lg mb-6">
-            Navigate through your available exams and manage your testing experience with full keyboard and screen reader support.
-          </p>
+    <main id="main-content" role="main" className="max-w-7xl mx-auto px-4 sm:px-6 py-8 page-enter">
+      {/* Page heading */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">
+          Welcome back, <span className="text-primary">{currentUser.username}</span>
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Your exams and progress — all in one place.
+        </p>
+      </div>
 
-          <AudioControls className="mb-8" />
+      {/* Stats row */}
+      {!attemptsLoading && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8" role="region" aria-label="Your statistics">
+          {[
+            { label: 'Available', value: exams.length, icon: BookOpen, color: 'text-blue-600 bg-blue-50' },
+            { label: 'Completed', value: completedAttempts.length, icon: CheckCircle2, color: 'text-green-600 bg-green-50' },
+            { label: 'Passed', value: passedCount, icon: Trophy, color: 'text-amber-600 bg-amber-50' },
+            { label: 'In Progress', value: attempts.filter(a => !a.completedAt).length, icon: Timer, color: 'text-purple-600 bg-purple-50' },
+          ].map(stat => {
+            const Icon = stat.icon;
+            return (
+              <div key={stat.label} className="stat-card flex items-center gap-4">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${stat.color}`}>
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <div className="stat-number text-foreground">{stat.value}</div>
+                  <div className="text-xs text-muted-foreground font-medium">{stat.label}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Audio controls */}
+      <div className="mb-8">
+        <AudioControls className="" />
+      </div>
+
+      {/* Available Exams */}
+      <section aria-labelledby="exams-heading" className="mb-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 id="exams-heading" className="text-lg font-semibold text-foreground">Available Exams</h2>
+          <span className="text-sm text-muted-foreground">{exams.length} exam{exams.length !== 1 ? 's' : ''}</span>
         </div>
 
-        {/* Teacher Dashboard */}
-        {currentUser.role === 'instructor' && (
-          <TeacherDashboard 
-            currentUser={currentUser} 
-            exams={exams} 
-            examsLoading={examsLoading} 
-          />
-        )}
-
-        {/* Student View: Available Exams */}
-        {currentUser.role === 'student' && (
-          <div className="mb-8">
-            <h3 className="text-2xl font-semibold mb-6">Available Exams</h3>
-            
-            {examsLoading ? (
-              <div className="space-y-4">
-                <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-                <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+        {examsLoading ? (
+          <div className="space-y-3">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : exams.length === 0 ? (
+          /* Empty state */
+          <Card className="border-border shadow-sm">
+            <CardContent className="py-16 flex flex-col items-center text-center">
+              <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                <BookOpen className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
               </div>
-            ) : exams.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-center text-gray-600 dark:text-gray-400">
-                    No exams are currently available.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {exams.map((exam) => (
-                  <Card 
-                    key={exam.id} 
-                    className="border-2 hover:border-primary/50 transition-colors card focus-within:border-primary"
-                    tabIndex={0}
-                    role="article"
-                    aria-labelledby={`exam-title-${exam.id}`}
-                    data-navigable="true"
-                    data-testid={`card-exam-${exam.id}`}
-                  >
-                    <CardContent className="pt-6">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 
-                            id={`exam-title-${exam.id}`}
-                            className="text-xl font-semibold mb-2" 
-                            data-testid={`text-exam-title-${exam.id}`}
-                          >
-                            {exam.title}
-                          </h4>
-                          <p className="text-gray-700 dark:text-gray-300 mb-4" data-testid={`text-exam-description-${exam.id}`}>
-                            {exam.description}
-                          </p>
-                          <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-                            <span className="flex items-center" data-testid={`text-exam-duration-${exam.id}`}>
-                              <Clock className="mr-1 h-4 w-4" aria-hidden="true" />
-                              Duration: {formatDuration(exam.duration)}
-                            </span>
-                            <span className="flex items-center">
-                              <FileText className="mr-1 h-4 w-4" aria-hidden="true" />
-                              Questions: Loading...
-                            </span>
-                            <span className="flex items-center">
-                              <Calendar className="mr-1 h-4 w-4" aria-hidden="true" />
-                              Available now
-                            </span>
-                          </div>
-                        </div>
-                        <Link href={`/exam/${exam.id}`}>
-                          <Button
-                            className="bg-primary hover:bg-primary-dark ml-6 focus-visible:outline-2 focus-visible:outline-primary"
-                            onClick={() => handleStartExam(exam.title)}
-                            aria-describedby={`start-exam-desc-${exam.id}`}
-                            data-testid={`button-start-exam-${exam.id}`}
-                          >
-                            Start Exam
-                          </Button>
-                        </Link>
-                        <p id={`start-exam-desc-${exam.id}`} className="sr-only">
-                          Begin the {exam.title}. You will be navigated to the exam interface with full keyboard and screen reader support.
-                        </p>
+              <h3 className="font-semibold text-foreground mb-1">No exams yet</h3>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                No exams are currently available. Check back later or contact your instructor.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {exams.map((exam) => (
+              <div
+                key={exam.id}
+                className="group relative bg-card border border-border rounded-xl px-5 py-4 shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20"
+                tabIndex={0}
+                role="article"
+                aria-labelledby={`exam-title-${exam.id}`}
+                data-testid={`card-exam-${exam.id}`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  {/* Left: info */}
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3
+                        id={`exam-title-${exam.id}`}
+                        className="font-semibold text-foreground text-base leading-snug mb-1"
+                        data-testid={`text-exam-title-${exam.id}`}
+                      >
+                        {exam.title}
+                      </h3>
+                      <p
+                        className="text-sm text-muted-foreground mb-3 line-clamp-1"
+                        data-testid={`text-exam-description-${exam.id}`}
+                      >
+                        {exam.description}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                          {formatDuration(exam.duration)}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
+                          Available now
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                  </div>
+
+                  {/* Right: CTA */}
+                  <Link href={`/exam/${exam.id}`} className="shrink-0">
+                    <Button
+                      className="h-9 px-4 gap-1.5 font-medium"
+                      onClick={() => handleStartExam(exam.title)}
+                      aria-describedby={`start-exam-desc-${exam.id}`}
+                      data-testid={`button-start-exam-${exam.id}`}
+                    >
+                      Start
+                      <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Button>
+                  </Link>
+                  <p id={`start-exam-desc-${exam.id}`} className="sr-only">
+                    Begin {exam.title}. Full keyboard and screen reader support available.
+                  </p>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         )}
+      </section>
 
-        {/* Student Results */}
-        {currentUser.role === 'student' && (
-          <div className="mb-8">
-            <h3 className="text-2xl font-semibold mb-6">Recent Results</h3>
-          
-          {attemptsLoading ? (
-            <div className="bg-gray-200 dark:bg-gray-700 h-64 rounded-lg animate-pulse" />
-          ) : attempts.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-center text-gray-600 dark:text-gray-400">
-                  No exam attempts found. Start taking exams to see your results here.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="overflow-x-auto">
-              <table 
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg" 
-                role="table" 
+      {/* Recent Results */}
+      <section aria-labelledby="results-heading">
+        <div className="flex items-center justify-between mb-4">
+          <h2 id="results-heading" className="text-lg font-semibold text-foreground">Recent Results</h2>
+        </div>
+
+        {attemptsLoading ? (
+          <div className="skeleton h-48 rounded-xl" aria-hidden="true" />
+        ) : attempts.length === 0 ? (
+          <Card className="border-border shadow-sm">
+            <CardContent className="py-12 flex flex-col items-center text-center">
+              <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                <Trophy className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-1">No results yet</h3>
+              <p className="text-sm text-muted-foreground">
+                Complete your first exam to see results here.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-border shadow-sm overflow-hidden">
+            <CardContent className="p-0">
+              <table
+                className="table-premium w-full"
+                role="table"
                 aria-label="Recent exam results"
               >
-                <caption className="sr-only">
-                  Your recent exam results showing exam name, completion date, score, and status
-                </caption>
-                <thead className="bg-gray-100 dark:bg-gray-800">
+                <caption className="sr-only">Your recent exam results</caption>
+                <thead>
                   <tr>
-                    <th className="text-left p-4 border-b border-gray-300 dark:border-gray-600" scope="col">
-                      Exam
-                    </th>
-                    <th className="text-left p-4 border-b border-gray-300 dark:border-gray-600" scope="col">
-                      Date
-                    </th>
-                    <th className="text-left p-4 border-b border-gray-300 dark:border-gray-600" scope="col">
-                      Score
-                    </th>
-                    <th className="text-left p-4 border-b border-gray-300 dark:border-gray-600" scope="col">
-                      Status
-                    </th>
-                    <th className="text-left p-4 border-b border-gray-300 dark:border-gray-600" scope="col">
-                      Actions
-                    </th>
+                    <th scope="col">Exam</th>
+                    <th scope="col" className="hidden sm:table-cell">Date</th>
+                    <th scope="col">Score</th>
+                    <th scope="col">Status</th>
+                    <th scope="col"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {attempts.slice(0, 5).map((attempt) => (
-                    <tr key={attempt.id} className="border-b border-gray-200 dark:border-gray-700">
-                      <td className="p-4" data-testid={`text-result-exam-${attempt.id}`}>
-                        {attempt.exam.title}
-                      </td>
-                      <td className="p-4" data-testid={`text-result-date-${attempt.id}`}>
-                        {attempt.completedAt ? formatDate(attempt.completedAt) : 'In Progress'}
-                      </td>
-                      <td className="p-4 font-semibold" data-testid={`text-result-score-${attempt.id}`}>
-                        {attempt.score ? `${attempt.score}/${attempt.totalQuestions}` : 'N/A'}
-                      </td>
-                      <td className="p-4">
-                        {attempt.score ? (
-                          <span 
-                            className={`px-3 py-1 rounded-full text-sm ${
-                              getPassingStatus(attempt.score, attempt.totalQuestions) === 'Passed'
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                            }`}
-                            data-testid={`text-result-status-${attempt.id}`}
-                          >
-                            {getPassingStatus(attempt.score, attempt.totalQuestions)}
-                          </span>
-                        ) : (
-                          <span className="text-gray-500">Incomplete</span>
-                        )}
-                      </td>
-                      <td className="p-4">
-                        {attempt.completedAt && (
-                          <Link href={`/results/${attempt.id}`}>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              data-testid={`button-view-results-${attempt.id}`}
-                            >
-                              View Results
-                            </Button>
-                          </Link>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {attempts.slice(0, 6).map((attempt) => {
+                    const passed = attempt.score ? isPassed(attempt.score, attempt.totalQuestions) : null;
+                    return (
+                      <tr key={attempt.id}>
+                        <td
+                          className="font-medium text-foreground"
+                          data-testid={`text-result-exam-${attempt.id}`}
+                        >
+                          {attempt.exam.title}
+                        </td>
+                        <td
+                          className="text-muted-foreground hidden sm:table-cell"
+                          data-testid={`text-result-date-${attempt.id}`}
+                        >
+                          {attempt.completedAt ? formatDate(attempt.completedAt) : '—'}
+                        </td>
+                        <td
+                          className="font-semibold text-foreground"
+                          data-testid={`text-result-score-${attempt.id}`}
+                        >
+                          {attempt.score ? `${attempt.score}/${attempt.totalQuestions}` : '—'}
+                        </td>
+                        <td data-testid={`text-result-status-${attempt.id}`}>
+                          {passed === null ? (
+                            <span className="badge-neutral inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium">
+                              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                              In Progress
+                            </span>
+                          ) : passed ? (
+                            <span className="badge-success inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium">
+                              <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                              Passed
+                            </span>
+                          ) : (
+                            <span className="badge-danger inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium">
+                              <XCircle className="h-3 w-3" aria-hidden="true" />
+                              Failed
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {attempt.completedAt && (
+                            <Link href={`/results/${attempt.id}`}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+                                data-testid={`button-view-results-${attempt.id}`}
+                              >
+                                View
+                                <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+                              </Button>
+                            </Link>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
-            </div>
-          )}
-          </div>
+            </CardContent>
+          </Card>
         )}
-
-        <div className="text-center text-gray-600 dark:text-gray-400">
-          <p>Use keyboard shortcuts for faster navigation:</p>
-          <p className="text-sm mt-2">
-            <strong>{navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? 'Option' : 'Alt'} + H:</strong> Help and shortcuts | 
-            <strong>{navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? 'Option' : 'Alt'} + R:</strong> Read page | 
-            <strong>{navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? 'Cmd' : 'Ctrl'} + M:</strong> Voice input (in exams) | 
-            <strong>Tab:</strong> Navigate | <strong>Enter/Space:</strong> Activate
-          </p>
-        </div>
       </section>
+
+      {/* Keyboard hint */}
+      <div className="mt-8 flex items-center gap-2 text-xs text-muted-foreground">
+        <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">Alt+A</kbd>
+        <span>Accessibility panel</span>
+        <span className="mx-2 text-border">·</span>
+        <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">Tab</kbd>
+        <span>Navigate</span>
+        <span className="mx-2 text-border">·</span>
+        <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">Alt+H</kbd>
+        <span>Help</span>
+      </div>
     </main>
   );
 }

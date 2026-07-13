@@ -1,11 +1,17 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAccessibility } from '@/components/AccessibilityProvider';
-import { Keyboard, Volume2, Eye, HelpCircle, Users, BookOpen } from 'lucide-react';
+import { Keyboard, Volume2, Eye, HelpCircle, Users, BookOpen, Zap, Monitor } from 'lucide-react';
 
 interface HelpProps {
   currentUser: { id: string; username: string; role: string };
 }
+
+const KbdKey = ({ children }: { children: string }) => (
+  <kbd className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted border border-border text-xs font-mono font-semibold text-foreground">
+    {children}
+  </kbd>
+);
 
 export default function Help({ currentUser }: HelpProps) {
   const { announceToScreenReader } = useAccessibility();
@@ -17,225 +23,197 @@ export default function Help({ currentUser }: HelpProps) {
   const keyboardShortcuts = [
     {
       category: 'Page Navigation',
-      icon: <Keyboard className="h-5 w-5" />,
+      icon: Keyboard,
+      color: 'text-blue-600 bg-blue-50',
       shortcuts: [
-        { keys: 'Alt + Down Arrow', description: 'Navigate to next element on page' },
-        { keys: 'Alt + Up Arrow', description: 'Navigate to previous element on page' },
-        { keys: 'Alt + M', description: 'Jump to main content area' },
-        { keys: 'Alt + N', description: 'Jump to navigation menu' },
+        { keys: ['Alt', '↓'], description: 'Navigate to next element' },
+        { keys: ['Alt', '↑'], description: 'Navigate to previous element' },
+        { keys: ['Alt', 'M'], description: 'Jump to main content' },
+        { keys: ['Alt', 'N'], description: 'Jump to navigation' },
+        { keys: ['Alt', 'F'], description: 'Jump to footer' },
       ]
     },
     {
       category: 'Quick Jumps',
-      icon: <Eye className="h-5 w-5" />,
+      icon: Zap,
+      color: 'text-amber-600 bg-amber-50',
       shortcuts: [
-        { keys: 'Alt + B', description: 'Jump to next button' },
-        { keys: 'Alt + L', description: 'Jump to next link' },
-        { keys: 'Alt + I', description: 'Jump to next input field' },
-        { keys: 'Alt + C', description: 'Jump to next card or content section' },
-        { keys: 'Alt + 1-6', description: 'Jump to heading levels (H1-H6)' },
+        { keys: ['Alt', 'B'], description: 'Jump to next button' },
+        { keys: ['Alt', 'L'], description: 'Jump to next link' },
+        { keys: ['Alt', 'I'], description: 'Jump to next input' },
+        { keys: ['Alt', 'C'], description: 'Jump to next card' },
+        { keys: ['Alt', '1–6'], description: 'Jump to heading level' },
       ]
     },
     {
       category: 'Exam Features',
-      icon: <BookOpen className="h-5 w-5" />,
+      icon: BookOpen,
+      color: 'text-green-600 bg-green-50',
       shortcuts: [
-        { keys: 'Alt + R', description: 'Read current question aloud' },
-        { keys: 'Alt + F', description: 'Flag current question for review' },
-        { keys: 'Alt + H', description: 'Show keyboard help menu' },
-        { keys: 'Ctrl + M (Cmd + M on Mac)', description: 'Start voice input' },
+        { keys: ['Alt', 'R'], description: 'Read current question aloud' },
+        { keys: ['Alt', 'H'], description: 'Show keyboard help menu' },
+        { keys: ['Ctrl', 'M'], description: 'Start voice input (Mac: Cmd+M)' },
+        { keys: ['F5'], description: 'Run code (VS Code shortcut)' },
+        { keys: ['F9'], description: 'Reset code editor' },
+      ]
+    },
+    {
+      category: 'Accessibility Panel',
+      icon: Monitor,
+      color: 'text-purple-600 bg-purple-50',
+      shortcuts: [
+        { keys: ['Alt', 'A'], description: 'Open quick accessibility panel' },
+        { keys: ['F11'], description: 'Toggle accessibility panel' },
+        { keys: ['Esc'], description: 'Close any open panel' },
       ]
     },
     {
       category: 'Standard Navigation',
-      icon: <Users className="h-5 w-5" />,
+      icon: Users,
+      color: 'text-slate-600 bg-slate-50',
       shortcuts: [
-        { keys: 'Tab', description: 'Move to next focusable element' },
-        { keys: 'Shift + Tab', description: 'Move to previous focusable element' },
-        { keys: 'Enter', description: 'Activate buttons and links' },
-        { keys: 'Space', description: 'Activate buttons and checkboxes' },
-        { keys: 'Arrow Keys', description: 'Navigate within radio groups and dropdowns' },
+        { keys: ['Tab'], description: 'Move to next focusable element' },
+        { keys: ['Shift', 'Tab'], description: 'Move to previous element' },
+        { keys: ['Enter'], description: 'Activate buttons and links' },
+        { keys: ['Space'], description: 'Activate buttons and checkboxes' },
+        { keys: ['↑ ↓'], description: 'Navigate within groups/dropdowns' },
       ]
     }
   ];
 
-  return (
-    <main id="main-content" role="main" className="max-w-4xl mx-auto px-6 py-8">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold mb-4">OPSIS Help Center</h1>
-        <p className="text-lg text-muted-foreground">
-          Complete guide to using OPSIS with full accessibility support for blind and visually impaired students.
-        </p>
-      </header>
+  const screenReaders = [
+    { name: 'NVDA', platform: 'Windows', description: 'Free, open-source screen reader. Recommended for Windows users.', badge: 'Free' },
+    { name: 'JAWS', platform: 'Windows', description: 'Professional screen reader with advanced features for enterprise use.', badge: 'Paid' },
+    { name: 'VoiceOver', platform: 'macOS / iOS', description: 'Built-in Apple screen reader. Press ⌘+F5 to activate on Mac.', badge: 'Built-in' },
+    { name: 'Orca', platform: 'Linux', description: 'GNOME screen reader for Linux distributions.', badge: 'Free' },
+    { name: 'TalkBack', platform: 'Android', description: 'Built-in Android screen reader for mobile devices.', badge: 'Built-in' },
+  ];
 
-      {/* Quick Start Guide */}
-      <section className="mb-8" onFocus={() => handleSectionFocus('Quick Start')}>
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center text-2xl">
-              <HelpCircle className="h-6 w-6 mr-2" aria-hidden="true" />
+  return (
+    <main id="main-content" role="main" className="max-w-5xl mx-auto px-4 sm:px-6 py-10 page-enter">
+      {/* Header */}
+      <div className="mb-10">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <HelpCircle className="h-5 w-5 text-primary" aria-hidden="true" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Help Center</h1>
+            <p className="text-muted-foreground text-sm">
+              Keyboard shortcuts, screen reader support, and accessibility guides
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Start */}
+      <section className="mb-8" onFocus={() => handleSectionFocus('Quick Start')} aria-labelledby="quickstart-heading">
+        <Card className="border-border shadow-sm overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-primary/5 to-secondary/5 border-b border-border pb-4">
+            <CardTitle id="quickstart-heading" className="flex items-center gap-2 text-lg">
+              <Zap className="h-5 w-5 text-primary" aria-hidden="true" />
               Quick Start Guide
             </CardTitle>
-            <CardDescription>
-              Essential information to get started with OPSIS navigation
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">For Students</h3>
-              <ul className="list-disc list-inside space-y-2 text-muted-foreground">
-                <li>Login with your roll number (e.g., "S001") and password</li>
-                <li>Use Alt + Down/Up arrows to navigate through available exams</li>
-                <li>Press Enter on "Start Exam" buttons to begin</li>
-                <li>During exams, use Alt + R to read questions aloud</li>
-                <li>Use Alt + N and Alt + P to navigate between questions</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">For Instructors</h3>
-              <ul className="list-disc list-inside space-y-2 text-muted-foreground">
-                <li>Login with your username and password</li>
-                <li>Navigate to "Manage Exams" to create and edit exams</li>
-                <li>Use "Grade Answers" to review student submissions</li>
-                <li>All keyboard navigation shortcuts work the same way</li>
-              </ul>
+          <CardContent className="p-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                { step: '1', title: 'Log in', desc: 'Enter your credentials on the login page. Tab through the form fields.' },
+                { step: '2', title: 'Browse exams', desc: 'On the Dashboard you\'ll see all available exams. Use Tab or Alt+↓ to navigate.' },
+                { step: '3', title: 'Start an exam', desc: 'Press Enter on "Start Exam". The editor opens with full keyboard navigation.' },
+                { step: '4', title: 'Answer questions', desc: 'Tab between questions. Alt+R reads the current question aloud.' },
+                { step: '5', title: 'Submit', desc: 'Press the Submit button or use Ctrl+S. Results appear instantly.' },
+                { step: '6', title: 'Review results', desc: 'Navigate to Results from the Dashboard to see your score breakdown.' },
+              ].map(item => (
+                <div key={item.step} className="flex gap-3">
+                  <div className="h-7 w-7 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {item.step}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm text-foreground mb-0.5">{item.title}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </section>
 
-      {/* Keyboard Shortcuts */}
-      <section className="mb-8" onFocus={() => handleSectionFocus('Keyboard Shortcuts')}>
-        <h2 className="text-2xl font-bold mb-6">Keyboard Shortcuts</h2>
-        <div className="grid md:grid-cols-2 gap-6">
-          {keyboardShortcuts.map((category) => (
-            <Card key={category.category} className="h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center text-lg">
-                  {category.icon}
-                  <span className="ml-2">{category.category}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {category.shortcuts.map((shortcut, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <Badge variant="secondary" className="text-xs font-mono whitespace-nowrap">
-                        {shortcut.keys}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground flex-1">
-                        {shortcut.description}
-                      </span>
+      {/* Keyboard shortcuts */}
+      <section className="mb-8" aria-labelledby="shortcuts-heading">
+        <h2 id="shortcuts-heading" className="text-xl font-bold text-foreground mb-4">Keyboard Shortcuts</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          {keyboardShortcuts.map((group) => {
+            const Icon = group.icon;
+            return (
+              <Card key={group.category} className="border-border shadow-sm" onFocus={() => handleSectionFocus(group.category)}>
+                <CardHeader className="pb-3 pt-5 px-5">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${group.color}`}>
+                      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    {group.category}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-5 pb-5">
+                  <ul className="space-y-2" role="list">
+                    {group.shortcuts.map((shortcut, idx) => (
+                      <li key={idx} className="flex items-center justify-between gap-4">
+                        <span className="text-sm text-muted-foreground">{shortcut.description}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {shortcut.keys.map((key, ki) => (
+                            <span key={ki} className="flex items-center gap-1">
+                              <KbdKey>{key}</KbdKey>
+                              {ki < shortcut.keys.length - 1 && (
+                                <span className="text-muted-foreground/50 text-xs">+</span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </section>
 
-      {/* Accessibility Features */}
-      <section className="mb-8" onFocus={() => handleSectionFocus('Accessibility Features')}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center text-2xl">
-              <Volume2 className="h-6 w-6 mr-2" aria-hidden="true" />
-              Accessibility Features
-            </CardTitle>
-            <CardDescription>
-              OPSIS is designed with comprehensive accessibility support
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Screen Reader Support</h3>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Full NVDA, JAWS, and VoiceOver compatibility</li>
-                <li>Proper ARIA labels and landmarks throughout</li>
-                <li>Live regions for dynamic content announcements</li>
-                <li>Semantic HTML structure for easy navigation</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Text-to-Speech</h3>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Built-in text-to-speech for all content</li>
-                <li>Adjustable speech rate and volume in Settings</li>
-                <li>Automatic reading of questions and instructions</li>
-                <li>Voice feedback for navigation actions</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Visual Accessibility</h3>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>High contrast mode for low vision users</li>
-                <li>Adjustable font sizes up to 24px</li>
-                <li>Clear focus indicators for keyboard navigation</li>
-                <li>Dark mode support for light sensitivity</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Troubleshooting */}
-      <section className="mb-8" onFocus={() => handleSectionFocus('Troubleshooting')}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Troubleshooting</CardTitle>
-            <CardDescription>
-              Common issues and solutions
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Keyboard Navigation Not Working</h3>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Make sure you're not in a text input field when using Alt shortcuts</li>
-                <li>Try clicking elsewhere on the page first, then use shortcuts</li>
-                <li>Refresh the page if shortcuts stop responding</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Screen Reader Issues</h3>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Ensure your screen reader is running before opening OPSIS</li>
-                <li>Try navigating with both Tab and Alt+Arrow keys</li>
-                <li>Use landmarks navigation (headings, main, navigation) in your screen reader</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Text-to-Speech Not Working</h3>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Check your browser's speech settings in Settings page</li>
-                <li>Ensure your device volume is turned up</li>
-                <li>Try a different browser if issues persist</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Contact Support */}
-      <section onFocus={() => handleSectionFocus('Contact Support')}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Need More Help?</CardTitle>
-            <CardDescription>
-              Additional support resources
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <p>If you need additional assistance with OPSIS:</p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Contact your institution's accessibility services</li>
-                <li>Reach out to your instructor for exam-specific questions</li>
-                <li>Use the "Keyboard Help" button (bottom-right corner) for quick reference</li>
-                <li>Practice with demo exams to familiarize yourself with the interface</li>
-              </ul>
-            </div>
+      {/* Screen readers */}
+      <section aria-labelledby="screenreaders-heading" onFocus={() => handleSectionFocus('Screen Reader Support')}>
+        <h2 id="screenreaders-heading" className="text-xl font-bold text-foreground mb-4">Screen Reader Compatibility</h2>
+        <Card className="border-border shadow-sm">
+          <CardContent className="p-0">
+            <table className="table-premium w-full" role="table" aria-label="Supported screen readers">
+              <thead>
+                <tr>
+                  <th scope="col" className="text-left">Screen Reader</th>
+                  <th scope="col" className="text-left">Platform</th>
+                  <th scope="col" className="text-left hidden md:table-cell">Description</th>
+                  <th scope="col" className="text-left">License</th>
+                </tr>
+              </thead>
+              <tbody>
+                {screenReaders.map((sr) => (
+                  <tr key={sr.name}>
+                    <td className="font-semibold text-foreground">{sr.name}</td>
+                    <td className="text-muted-foreground">{sr.platform}</td>
+                    <td className="text-muted-foreground hidden md:table-cell">{sr.description}</td>
+                    <td>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        sr.badge === 'Free' || sr.badge === 'Built-in'
+                          ? 'badge-success'
+                          : 'badge-neutral'
+                      }`}>
+                        {sr.badge}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </CardContent>
         </Card>
       </section>

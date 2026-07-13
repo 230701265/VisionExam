@@ -107,75 +107,152 @@ function AuthForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-primary">OPSIS</CardTitle>
-          <CardDescription className="text-lg">
-            Accessible examination platform designed for screen reader users
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6">
-            <div className="flex rounded-md border border-gray-300 dark:border-gray-600">
-              <button
-                className={`flex-1 py-2 px-4 text-sm font-medium rounded-l-md focus-visible:outline-2 focus-visible:outline-primary ${
-                  isLogin
-                    ? 'bg-primary text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-                onClick={() => setIsLogin(true)}
-                data-testid="button-login-tab"
-              >
-                Login
-              </button>
-              <button
-                className={`flex-1 py-2 px-4 text-sm font-medium rounded-r-md focus-visible:outline-2 focus-visible:outline-primary ${
-                  !isLogin
-                    ? 'bg-primary text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-                onClick={() => setIsLogin(false)}
-                data-testid="button-register-tab"
-              >
-                Register
-              </button>
+    <div className="min-h-screen flex bg-background">
+      {/* Left panel — branding */}
+      <div
+        className="hidden lg:flex lg:w-1/2 xl:w-5/12 flex-col justify-between p-10 relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, hsl(221 83% 53%) 0%, hsl(199 89% 48%) 100%)' }}
+        aria-hidden="true"
+      >
+        {/* Grid pattern */}
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.4) 1px, transparent 1px)',
+            backgroundSize: '40px 40px'
+          }}
+        />
+
+        {/* Logo */}
+        <div className="relative flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 28 28" fill="none">
+              <path d="M8 19V10l6-3 6 3v9l-6 3-6-3Z" stroke="white" strokeWidth="1.8" strokeLinejoin="round"/>
+              <circle cx="14" cy="14" r="2.5" fill="white"/>
+            </svg>
+          </div>
+          <span className="text-white font-bold text-xl tracking-tight">OPSIS</span>
+        </div>
+
+        {/* Tagline */}
+        <div className="relative">
+          <h1 className="text-white text-3xl font-bold leading-tight tracking-tight mb-4">
+            Accessible exams,<br />for every student.
+          </h1>
+          <p className="text-white/70 text-sm leading-relaxed max-w-xs">
+            Full keyboard navigation, screen reader support, and audio assistance built for WCAG 2.1 AA compliance.
+          </p>
+
+          {/* Feature list */}
+          <ul className="mt-8 space-y-3">
+            {[
+              'NVDA, JAWS, VoiceOver compatible',
+              'Alt+Arrow keys navigation',
+              'Text-to-speech built in',
+              'VS Code–like code editor',
+            ].map(f => (
+              <li key={f} className="flex items-center gap-2.5 text-white/80 text-sm">
+                <svg className="h-4 w-4 text-white shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="relative text-white/40 text-xs">
+          © {new Date().getFullYear()} OPSIS · WCAG 2.1 AA
+        </p>
+      </div>
+
+      {/* Right panel — form */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-2.5 mb-8">
+            <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 28 28" fill="none">
+                <path d="M8 19V10l6-3 6 3v9l-6 3-6-3Z" stroke="white" strokeWidth="1.8" strokeLinejoin="round"/>
+                <circle cx="14" cy="14" r="2.5" fill="white"/>
+              </svg>
             </div>
+            <span className="font-bold text-lg text-foreground tracking-tight">OPSIS</span>
+          </div>
+
+          <h2 className="text-2xl font-bold text-foreground tracking-tight mb-1">
+            {isLogin ? 'Welcome back' : 'Create account'}
+          </h2>
+          <p className="text-muted-foreground text-sm mb-7">
+            {isLogin ? 'Sign in to your account to continue.' : 'Get started with OPSIS today.'}
+          </p>
+
+          {/* Tab switcher */}
+          <div className="flex rounded-xl bg-muted p-1 mb-6" role="tablist" aria-label="Login or Register">
+            <button
+              role="tab"
+              aria-selected={isLogin}
+              className={`flex-1 py-1.5 px-4 text-sm font-medium rounded-lg transition-all duration-150 focus-visible:outline-2 focus-visible:outline-primary ${
+                isLogin
+                  ? 'bg-white shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setIsLogin(true)}
+              data-testid="button-login-tab"
+            >
+              Sign In
+            </button>
+            <button
+              role="tab"
+              aria-selected={!isLogin}
+              className={`flex-1 py-1.5 px-4 text-sm font-medium rounded-lg transition-all duration-150 focus-visible:outline-2 focus-visible:outline-primary ${
+                !isLogin
+                  ? 'bg-white shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setIsLogin(false)}
+              data-testid="button-register-tab"
+            >
+              Register
+            </button>
           </div>
 
           {isLogin ? (
             <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
               <div>
-                <Label htmlFor="login-username" className="text-base font-medium">
-                  Roll Number (Students) / Username (Teachers)
+                <Label htmlFor="login-username" className="text-sm font-medium text-foreground">
+                  Username / Roll Number
                 </Label>
                 <Input
                   id="login-username"
                   {...loginForm.register('username')}
-                  className="mt-1 text-base focus:ring-2 focus:ring-primary"
-                  placeholder="Enter your roll number or username"
+                  className="mt-1.5 h-10 text-sm"
+                  placeholder="e.g. S001 or instructor"
                   data-testid="input-login-username"
+                  autoComplete="username"
                 />
                 {loginForm.formState.errors.username && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className="mt-1 text-xs text-destructive">
                     {loginForm.formState.errors.username.message}
                   </p>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="login-password" className="text-base font-medium">
+                <Label htmlFor="login-password" className="text-sm font-medium text-foreground">
                   Password
                 </Label>
                 <Input
                   id="login-password"
                   type="password"
                   {...loginForm.register('password')}
-                  className="mt-1 text-base focus:ring-2 focus:ring-primary"
+                  className="mt-1.5 h-10 text-sm"
+                  placeholder="Enter your password"
                   data-testid="input-login-password"
+                  autoComplete="current-password"
                 />
                 {loginForm.formState.errors.password && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className="mt-1 text-xs text-destructive">
                     {loginForm.formState.errors.password.message}
                   </p>
                 )}
@@ -183,59 +260,62 @@ function AuthForm() {
 
               <Button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-dark focus-visible:outline-2 focus-visible:outline-primary"
+                className="w-full h-10 font-semibold mt-2"
                 disabled={loginMutation.isPending}
                 data-testid="button-login-submit"
               >
-                {loginMutation.isPending ? 'Signing In...' : 'Sign In'}
+                {loginMutation.isPending ? 'Signing in…' : 'Sign In'}
               </Button>
             </form>
           ) : (
             <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
               <div>
-                <Label htmlFor="register-username" className="text-base font-medium">
-                  Roll Number (Students) / Username (Teachers)
+                <Label htmlFor="register-username" className="text-sm font-medium text-foreground">
+                  Username / Roll Number
                 </Label>
                 <Input
                   id="register-username"
                   {...registerForm.register('username')}
-                  className="mt-1 text-base focus:ring-2 focus:ring-primary"
-                  placeholder="Enter your roll number or username"
+                  className="mt-1.5 h-10 text-sm"
+                  placeholder="Choose a username"
                   data-testid="input-register-username"
+                  autoComplete="username"
                 />
                 {registerForm.formState.errors.username && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className="mt-1 text-xs text-destructive">
                     {registerForm.formState.errors.username.message}
                   </p>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="register-password" className="text-base font-medium">
+                <Label htmlFor="register-password" className="text-sm font-medium text-foreground">
                   Password
                 </Label>
                 <Input
                   id="register-password"
                   type="password"
                   {...registerForm.register('password')}
-                  className="mt-1 text-base focus:ring-2 focus:ring-primary"
+                  className="mt-1.5 h-10 text-sm"
+                  placeholder="Min. 6 characters"
                   data-testid="input-register-password"
+                  autoComplete="new-password"
                 />
                 {registerForm.formState.errors.password && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className="mt-1 text-xs text-destructive">
                     {registerForm.formState.errors.password.message}
                   </p>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="register-role" className="text-base font-medium">
-                  Role
+                <Label htmlFor="register-role" className="text-sm font-medium text-foreground">
+                  I am a…
                 </Label>
                 <select
                   id="register-role"
                   {...registerForm.register('role')}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-primary focus:border-primary dark:bg-gray-700 text-base"
+                  className="mt-1.5 block w-full h-10 px-3 py-2 border border-input rounded-lg bg-background text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                   data-testid="select-register-role"
                 >
                   <option value="student">Student</option>
@@ -245,22 +325,22 @@ function AuthForm() {
 
               <Button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-dark focus-visible:outline-2 focus-visible:outline-primary"
+                className="w-full h-10 font-semibold mt-2"
                 disabled={registerMutation.isPending}
                 data-testid="button-register-submit"
               >
-                {registerMutation.isPending ? 'Creating Account...' : 'Create Account'}
+                {registerMutation.isPending ? 'Creating account…' : 'Create Account'}
               </Button>
             </form>
           )}
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Demo credentials: Roll number "S001" (student) or Username "instructor" (teacher), password "password123"
+          <div className="mt-6 pt-5 border-t border-border">
+            <p className="text-xs text-muted-foreground text-center">
+              Demo — Student: <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">S001</code> · Instructor: <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">instructor</code> · Password: <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">password123</code>
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
@@ -374,17 +454,18 @@ function App() {
             <InternationalKeyboardHelp />
             
             {/* Floating Accessibility Button */}
-            <div className="fixed bottom-6 right-6 z-[9999] pointer-events-none">
+            <div className="fixed bottom-5 right-5 z-[9999]">
               <Button
                 onClick={() => setIsQuickPanelOpen(true)}
-                className="h-16 w-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl border-2 border-white focus-visible:outline-4 focus-visible:outline-white transition-all duration-200 hover:scale-110 pointer-events-auto"
-                aria-label="Open quick accessibility settings (Alt+A or F11)"
-                title="Quick Accessibility Settings\n\nKeyboard shortcuts: Alt+A or F11\n\nIncludes: font size, contrast, motion settings, speech controls"
+                className="h-12 w-12 rounded-full bg-primary hover:bg-primary/90 shadow-lg border border-primary/20 focus-visible:outline-2 focus-visible:outline-white transition-all duration-200 hover:scale-105 hover:shadow-xl"
+                aria-label="Quick accessibility settings — Alt+A or F11"
+                title="Quick Accessibility Settings (Alt+A or F11)"
                 data-testid="button-quick-accessibility"
               >
-                <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9h6M12 9v10M9 19h6"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 13l-2 2M17 13l2 2"/>
                 </svg>
               </Button>
             </div>
@@ -396,43 +477,34 @@ function App() {
             />
 
             {/* Footer */}
-            <footer role="contentinfo" className="bg-gray-100 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-600 mt-12">
-              <div className="max-w-4xl mx-auto px-6 py-8">
-                <div className="grid md:grid-cols-3 gap-8">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Cross-Platform Keyboard Shortcuts</h3>
-                    <dl className="text-sm space-y-1">
-                      <div><dt className="inline font-medium">Alt/Option + A:</dt> <dd className="inline">Quick accessibility panel</dd></div>
-                      <div><dt className="inline font-medium">F11:</dt> <dd className="inline">Quick accessibility panel (alternative)</dd></div>
-                      <div><dt className="inline font-medium">Alt/Option + Arrows:</dt> <dd className="inline">Navigate elements (WCAG standard)</dd></div>
-                      <div><dt className="inline font-medium">Alt/Option + M/N/F:</dt> <dd className="inline">Jump to main/nav/footer regions</dd></div>
-                      <div><dt className="inline font-medium">Alt/Option + H/B/L/I:</dt> <dd className="inline">Next heading/button/link/input</dd></div>
-                      <div><dt className="inline font-medium">Alt/Option + 1-6:</dt> <dd className="inline">Jump to heading levels</dd></div>
-                      <div><dt className="inline font-medium">F5/F9:</dt> <dd className="inline">Run/reset code (VS Code)</dd></div>
-                      <div><dt className="inline font-medium">Escape:</dt> <dd className="inline">Close panels and dialogs</dd></div>
-                    </dl>
+            <footer role="contentinfo" id="footer" className="border-t border-border mt-16 bg-card">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                  {/* Brand */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+                      <svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+                        <path d="M8 19V10l6-3 6 3v9l-6 3-6-3Z" stroke="white" strokeWidth="1.8" strokeLinejoin="round"/>
+                        <circle cx="14" cy="14" r="2.5" fill="white"/>
+                      </svg>
+                    </div>
+                    <span className="font-semibold text-sm text-foreground">OPSIS</span>
+                    <span className="text-muted-foreground/50 text-xs">·</span>
+                    <span className="text-xs text-muted-foreground">WCAG 2.1 AA</span>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Support</h3>
-                    <ul className="text-sm space-y-2">
-                      <li><span className="text-gray-600 dark:text-gray-400">Technical Support</span></li>
-                      <li><span className="text-gray-600 dark:text-gray-400">Accessibility Guide</span></li>
-                      <li><span className="text-gray-600 dark:text-gray-400">Screen Reader Setup</span></li>
-                      <li><span className="text-gray-600 dark:text-gray-400">Contact Us</span></li>
-                    </ul>
+
+                  {/* Keyboard shortcuts */}
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+                    <span><kbd className="font-mono bg-muted px-1.5 py-0.5 rounded border border-border mr-1">Alt+A</kbd>Accessibility</span>
+                    <span><kbd className="font-mono bg-muted px-1.5 py-0.5 rounded border border-border mr-1">Alt+↑↓</kbd>Navigate</span>
+                    <span><kbd className="font-mono bg-muted px-1.5 py-0.5 rounded border border-border mr-1">F5</kbd>Run code</span>
+                    <span><kbd className="font-mono bg-muted px-1.5 py-0.5 rounded border border-border mr-1">Esc</kbd>Close</span>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Information</h3>
-                    <ul className="text-sm space-y-2">
-                      <li><span className="text-gray-600 dark:text-gray-400">Privacy Policy</span></li>
-                      <li><span className="text-gray-600 dark:text-gray-400">Terms of Service</span></li>
-                      <li><span className="text-gray-600 dark:text-gray-400">WCAG Compliance</span></li>
-                      <li><span className="text-gray-600 dark:text-gray-400">Version 2.1.0</span></li>
-                    </ul>
-                  </div>
-                </div>
-                <div className="border-t border-gray-300 dark:border-gray-600 pt-6 mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-                  <p>&copy; 2024 OPSIS. Designed for full accessibility compliance with WCAG 2.1 AA standards.</p>
+
+                  {/* Copyright */}
+                  <p className="text-xs text-muted-foreground">
+                    © {new Date().getFullYear()} OPSIS
+                  </p>
                 </div>
               </div>
             </footer>
