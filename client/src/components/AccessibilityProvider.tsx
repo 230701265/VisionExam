@@ -1,8 +1,7 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useInternationalKeyboardNavigation } from '@/hooks/useInternationalKeyboardNavigation';
 
 export interface AccessibilitySettings {
-  // Display & Visual
   fontSize: number;
   contrastMode: 'normal' | 'high' | 'dark';
   colorTheme: 'default' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'monochrome';
@@ -11,14 +10,10 @@ export interface AccessibilitySettings {
   fontFamily: 'default' | 'dyslexia' | 'serif' | 'mono';
   cursorSize: 'normal' | 'large' | 'extra-large';
   focusIndicatorStyle: 'default' | 'thick' | 'colored' | 'animated';
-  
-  // Motion & Animation
   reducedMotion: boolean;
   animationSpeed: 'slow' | 'normal' | 'fast' | 'off';
   parallaxEffects: boolean;
   autoplayMedia: boolean;
-  
-  // Audio & Speech
   speechEnabled: boolean;
   speechRate: number;
   speechVolume: number;
@@ -27,36 +22,34 @@ export interface AccessibilitySettings {
   audioInstructions: boolean;
   soundEffects: boolean;
   audioDescriptions: boolean;
-  
-  // Navigation & Interaction
   keyboardNavigation: 'standard' | 'enhanced' | 'custom';
   tabOrder: 'default' | 'logical' | 'visual';
   skipLinksVisible: boolean;
   stickyFocus: boolean;
   clickDelay: number;
-  
-  // Screen Reader & Assistive Tech
   verboseMode: boolean;
   announceChanges: boolean;
   structuralNavigation: boolean;
   landmarkNavigation: boolean;
-  
-  // Content & Reading
   readingMode: boolean;
   textJustification: 'left' | 'center' | 'justify';
   paragraphSpacing: number;
   highlightLinks: boolean;
   showTooltips: boolean;
-  
-  // Timing & Timeouts
   extendedTimeouts: boolean;
   timeoutWarnings: boolean;
   pauseAnimations: boolean;
-  
-  // Language & Localization
   language: string;
   dateFormat: 'iso' | 'us' | 'eu' | 'local';
   numberFormat: 'default' | 'simplified';
+  /* New settings */
+  readingMask: boolean;
+  readingMaskHeight: number;
+  readingGuide: boolean;
+  liveCaptions: boolean;
+  voiceNavigation: boolean;
+  screenReaderMode: boolean;
+  wordSpacing: number;
 }
 
 interface AccessibilityContextType {
@@ -68,6 +61,7 @@ interface AccessibilityContextType {
   isSpeaking: boolean;
   speechSupported: boolean;
   isLoading: boolean;
+  currentCaption: string;
   resetToDefaults: () => void;
   exportSettings: () => string;
   importSettings: (settingsString: string) => boolean;
@@ -75,99 +69,189 @@ interface AccessibilityContextType {
 
 const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);
 
+/* ── Reading Mask overlay ────────────────────────────────── */
+function ReadingMask({ height }: { height: number }) {
+  const [maskY, setMaskY] = useState(300);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => setMaskY(e.clientY);
+    window.addEventListener('mousemove', onMouseMove);
+    return () => window.removeEventListener('mousemove', onMouseMove);
+  }, []);
+
+  const band = Math.max(20, height);
+
+  return (
+    <div
+      aria-hidden="true"
+      role="presentation"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 9998,
+        background: `linear-gradient(
+          to bottom,
+          rgba(0,0,0,0.45) 0px,
+          rgba(0,0,0,0.45) ${Math.max(0, maskY - band)}px,
+          transparent ${Math.max(0, maskY - band)}px,
+          transparent ${maskY + band}px,
+          rgba(0,0,0,0.45) ${maskY + band}px,
+          rgba(0,0,0,0.45) 100%
+        )`,
+      }}
+    />
+  );
+}
+
+/* ── Live Captions bar ───────────────────────────────────── */
+function LiveCaptionsBar({ text }: { text: string }) {
+  if (!text) return null;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label="Live captions"
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 9997,
+        background: 'rgba(0,0,0,0.87)',
+        color: '#fff',
+        fontSize: '1.1rem',
+        lineHeight: 1.5,
+        padding: '12px 24px',
+        textAlign: 'center',
+        borderTop: '3px solid hsl(221 83% 53%)',
+        letterSpacing: '0.01em',
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
+/* ── Reading Guide line ──────────────────────────────────── */
+function ReadingGuideLine() {
+  const [guideY, setGuideY] = useState(-100);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => setGuideY(e.clientY);
+    window.addEventListener('mousemove', onMouseMove);
+    return () => window.removeEventListener('mousemove', onMouseMove);
+  }, []);
+
+  return (
+    <div
+      aria-hidden="true"
+      role="presentation"
+      style={{
+        position: 'fixed',
+        left: 0,
+        right: 0,
+        top: guideY,
+        height: 2,
+        background: 'hsl(221 83% 53% / 0.5)',
+        pointerEvents: 'none',
+        zIndex: 9996,
+        transition: 'top 0.05s linear',
+      }}
+    />
+  );
+}
+
+/* ── Provider ────────────────────────────────────────────── */
 export function AccessibilityProvider({ children }: { children: ReactNode }) {
-  // Initialize international keyboard navigation
-  const keyboardNav = useInternationalKeyboardNavigation();
-  
+  useInternationalKeyboardNavigation();
+
   const getDefaultSettings = (): AccessibilitySettings => ({
-    // Display & Visual
-    fontSize: 18,
+    fontSize: 16,
     contrastMode: 'normal',
     colorTheme: 'default',
     lineHeight: 1.6,
     letterSpacing: 0,
+    wordSpacing: 0,
     fontFamily: 'default',
     cursorSize: 'normal',
     focusIndicatorStyle: 'default',
-    
-    // Motion & Animation
     reducedMotion: false,
     animationSpeed: 'normal',
     parallaxEffects: true,
     autoplayMedia: true,
-    
-    // Audio & Speech
     speechEnabled: false,
-    speechRate: 10, // 0.5 to 2.0, stored as 5-20
+    speechRate: 10,
     speechVolume: 80,
     speechVoice: '',
     speechPitch: 10,
     audioInstructions: true,
     soundEffects: true,
     audioDescriptions: false,
-    
-    // Navigation & Interaction
     keyboardNavigation: 'enhanced',
     tabOrder: 'logical',
     skipLinksVisible: true,
     stickyFocus: false,
     clickDelay: 0,
-    
-    // Screen Reader & Assistive Tech
     verboseMode: false,
     announceChanges: true,
     structuralNavigation: true,
     landmarkNavigation: true,
-    
-    // Content & Reading
     readingMode: false,
     textJustification: 'left',
     paragraphSpacing: 1,
     highlightLinks: true,
     showTooltips: true,
-    
-    // Timing & Timeouts
     extendedTimeouts: false,
     timeoutWarnings: true,
     pauseAnimations: false,
-    
-    // Language & Localization
     language: 'en-US',
     dateFormat: 'local',
-    numberFormat: 'default'
+    numberFormat: 'default',
+    readingMask: false,
+    readingMaskHeight: 40,
+    readingGuide: false,
+    liveCaptions: false,
+    voiceNavigation: false,
+    screenReaderMode: false,
   });
 
   const [settings, setSettings] = useState<AccessibilitySettings>(getDefaultSettings());
   const [isLoading, setIsLoading] = useState(false);
-
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
-  const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesis | null>(null);
+  const [speechSynthesisObj, setSpeechSynthesisObj] = useState<SpeechSynthesis | null>(null);
   const [ariaLiveRegion, setAriaLiveRegion] = useState<HTMLElement | null>(null);
+  const [currentCaption, setCurrentCaption] = useState('');
 
-  // Initialize speech synthesis and ARIA live region
   useEffect(() => {
-    // Check for speech synthesis support
     if ('speechSynthesis' in window) {
-      setSpeechSynthesis(window.speechSynthesis);
+      setSpeechSynthesisObj(window.speechSynthesis);
       setSpeechSupported(true);
       setSettings(prev => ({ ...prev, speechEnabled: true }));
     }
 
-    // Create ARIA live region for screen reader announcements
     const liveRegion = document.createElement('div');
     liveRegion.setAttribute('aria-live', 'polite');
     liveRegion.setAttribute('aria-atomic', 'true');
-    liveRegion.style.position = 'absolute';
-    liveRegion.style.left = '-10000px';
-    liveRegion.style.width = '1px';
-    liveRegion.style.height = '1px';
-    liveRegion.style.overflow = 'hidden';
+    liveRegion.style.cssText = 'position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden';
     document.body.appendChild(liveRegion);
     setAriaLiveRegion(liveRegion);
 
-    // Apply initial settings to document
-    applyAccessibilitySettings(settings);
+    const savedSettings = localStorage.getItem('opsis-accessibility-settings');
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        const merged = { ...getDefaultSettings(), ...parsed };
+        setSettings(merged);
+        applyAccessibilitySettings(merged);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      applyAccessibilitySettings(getDefaultSettings());
+    }
 
     return () => {
       if (liveRegion && document.body.contains(liveRegion)) {
@@ -176,215 +260,123 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Apply settings to the document
-  const applyAccessibilitySettings = (newSettings: AccessibilitySettings) => {
+  const applyAccessibilitySettings = (s: AccessibilitySettings) => {
     const root = document.documentElement;
-    
-    // Apply font size
-    root.style.fontSize = `${newSettings.fontSize}px`;
-    
-    // Apply line height
-    root.style.setProperty('--line-height', newSettings.lineHeight.toString());
-    
-    // Apply letter spacing
-    root.style.setProperty('--letter-spacing', `${newSettings.letterSpacing}px`);
-    
-    // Apply contrast mode
-    root.classList.remove('high-contrast', 'dark-mode');
-    if (newSettings.contrastMode === 'high') {
-      root.classList.add('high-contrast');
-    } else if (newSettings.contrastMode === 'dark') {
-      root.classList.add('dark-mode');
-    }
-    
-    // Apply color theme for colorblind users
+
+    root.style.fontSize = `${s.fontSize}px`;
+    root.style.setProperty('--line-height', s.lineHeight.toString());
+    root.style.setProperty('--letter-spacing', `${s.letterSpacing}px`);
+    root.style.setProperty('--word-spacing', `${s.wordSpacing}px`);
+    root.style.setProperty('--text-align', s.textJustification);
+    root.style.setProperty('--paragraph-spacing', `${s.paragraphSpacing}rem`);
+
+    root.classList.remove('high-contrast', 'dark');
+    if (s.contrastMode === 'high') root.classList.add('high-contrast');
+    else if (s.contrastMode === 'dark') root.classList.add('dark');
+
     root.classList.remove('protanopia', 'deuteranopia', 'tritanopia', 'monochrome');
-    if (newSettings.colorTheme !== 'default') {
-      root.classList.add(newSettings.colorTheme);
-    }
-    
-    // Apply font family
+    if (s.colorTheme !== 'default') root.classList.add(s.colorTheme);
+
     root.classList.remove('font-dyslexia', 'font-serif', 'font-mono');
-    if (newSettings.fontFamily !== 'default') {
-      root.classList.add(`font-${newSettings.fontFamily}`);
-    }
-    
-    // Apply cursor size
+    if (s.fontFamily !== 'default') root.classList.add(`font-${s.fontFamily}`);
+
     root.classList.remove('cursor-large', 'cursor-extra-large');
-    if (newSettings.cursorSize !== 'normal') {
-      root.classList.add(`cursor-${newSettings.cursorSize}`);
-    }
-    
-    // Apply focus indicator style
+    if (s.cursorSize !== 'normal') root.classList.add(`cursor-${s.cursorSize}`);
+
     root.classList.remove('focus-thick', 'focus-colored', 'focus-animated');
-    if (newSettings.focusIndicatorStyle !== 'default') {
-      root.classList.add(`focus-${newSettings.focusIndicatorStyle}`);
-    }
-    
-    // Apply motion settings
-    if (newSettings.reducedMotion) {
-      root.classList.add('reduce-motion');
-    } else {
-      root.classList.remove('reduce-motion');
-    }
-    
-    // Apply animation speed
+    if (s.focusIndicatorStyle !== 'default') root.classList.add(`focus-${s.focusIndicatorStyle}`);
+
+    root.classList.toggle('reduce-motion', s.reducedMotion);
     root.classList.remove('animation-slow', 'animation-fast', 'animation-off');
-    if (newSettings.animationSpeed !== 'normal') {
-      root.classList.add(`animation-${newSettings.animationSpeed}`);
-    }
-    
-    // Apply reading mode
-    if (newSettings.readingMode) {
-      root.classList.add('reading-mode');
-    } else {
-      root.classList.remove('reading-mode');
-    }
-    
-    // Apply text justification
-    root.style.setProperty('--text-align', newSettings.textJustification);
-    
-    // Apply paragraph spacing
-    root.style.setProperty('--paragraph-spacing', `${newSettings.paragraphSpacing}rem`);
+    if (s.animationSpeed !== 'normal') root.classList.add(`animation-${s.animationSpeed}`);
+
+    root.classList.toggle('reading-mode', s.readingMode);
+    root.classList.toggle('screen-reader-mode', s.screenReaderMode);
   };
 
-  const updateSettings = async (newSettings: Partial<AccessibilitySettings>) => {
-    setIsLoading(true);
-    try {
-      const updatedSettings = { ...settings, ...newSettings };
-      setSettings(updatedSettings);
-      applyAccessibilitySettings(updatedSettings);
-      
-      // Save to localStorage
-      localStorage.setItem('opsis-accessibility-settings', JSON.stringify(updatedSettings));
-      
-      // Announce major changes
-      if (newSettings.contrastMode && newSettings.contrastMode !== settings.contrastMode) {
-        announceToScreenReader(`Contrast mode changed to ${newSettings.contrastMode}`);
-      }
-      if (newSettings.fontSize && newSettings.fontSize !== settings.fontSize) {
-        announceToScreenReader(`Font size changed to ${newSettings.fontSize} pixels`);
-      }
-    } finally {
-      setTimeout(() => setIsLoading(false), 300);
-    }
-  };
-  
-  const resetToDefaults = () => {
-    const defaultSettings = getDefaultSettings();
-    setSettings(defaultSettings);
-    applyAccessibilitySettings(defaultSettings);
-    localStorage.removeItem('opsis-accessibility-settings');
-    announceToScreenReader('Settings reset to defaults');
-  };
-  
-  const exportSettings = () => {
-    return JSON.stringify(settings, null, 2);
-  };
-  
-  const importSettings = (settingsString: string) => {
-    try {
-      const importedSettings = JSON.parse(settingsString);
-      const validatedSettings = { ...getDefaultSettings(), ...importedSettings };
-      setSettings(validatedSettings);
-      applyAccessibilitySettings(validatedSettings);
-      localStorage.setItem('opsis-accessibility-settings', JSON.stringify(validatedSettings));
-      announceToScreenReader('Settings imported successfully');
-      return true;
-    } catch (error) {
-      announceToScreenReader('Failed to import settings. Invalid format.');
-      return false;
-    }
-  };
-
-  const announceToScreenReader = (message: string, priority: 'polite' | 'assertive' = 'polite') => {
+  const announceToScreenReader = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
     if (ariaLiveRegion) {
       ariaLiveRegion.setAttribute('aria-live', priority);
       ariaLiveRegion.textContent = message;
-      
-      // Clear after announcement
-      setTimeout(() => {
-        if (ariaLiveRegion) {
-          ariaLiveRegion.textContent = '';
-        }
-      }, 1000);
+      setTimeout(() => { if (ariaLiveRegion) ariaLiveRegion.textContent = ''; }, 1000);
     }
+  }, [ariaLiveRegion]);
 
-    // Also speak if TTS is enabled and available
-    if (settings.audioInstructions && speechSupported) {
-      speak(message);
+  const speak = useCallback((text: string) => {
+    if (!speechSynthesisObj) return;
+    speechSynthesisObj.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = settings.speechRate / 10;
+    utt.volume = settings.speechVolume / 100;
+    utt.pitch = settings.speechPitch / 10;
+    if (settings.speechVoice) {
+      const voice = speechSynthesisObj.getVoices().find(v => v.name === settings.speechVoice);
+      if (voice) utt.voice = voice;
     }
-  };
+    utt.onstart = () => { setIsSpeaking(true); if (settings.liveCaptions) setCurrentCaption(text); };
+    utt.onend   = () => { setIsSpeaking(false); setCurrentCaption(''); };
+    utt.onerror = () => { setIsSpeaking(false); setCurrentCaption(''); };
+    speechSynthesisObj.speak(utt);
+  }, [speechSynthesisObj, settings]);
 
-  const speak = (text: string) => {
-    if (!speechSynthesis || !settings.speechEnabled || !settings.audioInstructions) {
-      return;
+  const stopSpeaking = useCallback(() => {
+    if (speechSynthesisObj) { speechSynthesisObj.cancel(); setIsSpeaking(false); setCurrentCaption(''); }
+  }, [speechSynthesisObj]);
+
+  const updateSettings = useCallback(async (newSettings: Partial<AccessibilitySettings>) => {
+    setIsLoading(true);
+    try {
+      const updated = { ...settings, ...newSettings };
+      setSettings(updated);
+      applyAccessibilitySettings(updated);
+      localStorage.setItem('opsis-accessibility-settings', JSON.stringify(updated));
+      if (newSettings.contrastMode && newSettings.contrastMode !== settings.contrastMode)
+        announceToScreenReader(`Contrast mode: ${newSettings.contrastMode}`);
+      if (newSettings.fontSize && newSettings.fontSize !== settings.fontSize)
+        announceToScreenReader(`Font size: ${newSettings.fontSize}px`);
+    } finally {
+      setTimeout(() => setIsLoading(false), 250);
     }
+  }, [settings, announceToScreenReader]);
 
-    // Cancel any current speech
-    speechSynthesis.cancel();
+  const resetToDefaults = useCallback(() => {
+    const d = getDefaultSettings();
+    setSettings(d);
+    applyAccessibilitySettings(d);
+    localStorage.removeItem('opsis-accessibility-settings');
+    announceToScreenReader('Accessibility settings reset to defaults.');
+  }, [announceToScreenReader]);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = settings.speechRate / 10; // Convert 5-20 to 0.5-2.0
-    utterance.volume = settings.speechVolume / 100; // Convert 0-100 to 0-1.0
-    
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+  const exportSettings = useCallback(() => JSON.stringify(settings, null, 2), [settings]);
 
-    speechSynthesis.speak(utterance);
-  };
-
-  const stopSpeaking = () => {
-    if (speechSynthesis) {
-      speechSynthesis.cancel();
-      setIsSpeaking(false);
+  const importSettings = useCallback((str: string) => {
+    try {
+      const imported = JSON.parse(str);
+      const valid = { ...getDefaultSettings(), ...imported };
+      setSettings(valid);
+      applyAccessibilitySettings(valid);
+      localStorage.setItem('opsis-accessibility-settings', JSON.stringify(valid));
+      announceToScreenReader('Settings imported successfully.');
+      return true;
+    } catch {
+      announceToScreenReader('Failed to import settings. Invalid format.');
+      return false;
     }
-  };
-
-  // Load settings from localStorage on mount
-  useEffect(() => {
-    const savedSettings = localStorage.getItem('opsis-accessibility-settings');
-    if (savedSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedSettings);
-        const mergedSettings = { ...getDefaultSettings(), ...parsedSettings };
-        setSettings(mergedSettings);
-        applyAccessibilitySettings(mergedSettings);
-      } catch (error) {
-        console.warn('Failed to load accessibility settings from localStorage');
-      }
-    }
-  }, []);
-
-  const contextValue: AccessibilityContextType = {
-    settings,
-    updateSettings,
-    announceToScreenReader,
-    speak,
-    stopSpeaking,
-    isSpeaking,
-    speechSupported,
-    isLoading,
-    resetToDefaults,
-    exportSettings,
-    importSettings
-  };
+  }, [announceToScreenReader]);
 
   return (
-    <AccessibilityContext.Provider value={contextValue}>
+    <AccessibilityContext.Provider value={{
+      settings, updateSettings, announceToScreenReader, speak, stopSpeaking,
+      isSpeaking, speechSupported, isLoading, currentCaption,
+      resetToDefaults, exportSettings, importSettings,
+    }}>
       {children}
-      
-      {/* Accessibility Instructions */}
-      <div className="sr-only">
-        <h1>OPSIS Coding Exam Platform - Accessibility Features</h1>
-        <p>
-          This platform supports comprehensive keyboard navigation and screen reader functionality.
-          Use Alt+Up/Down arrows to navigate between sections.
-          Press H key to access keyboard shortcuts help.
-          Tab key navigates through interactive elements.
-          All coding editors support standard VS Code keyboard shortcuts.
-        </p>
+      {settings.readingMask && <ReadingMask height={settings.readingMaskHeight} />}
+      {settings.readingGuide && <ReadingGuideLine />}
+      {settings.liveCaptions && <LiveCaptionsBar text={currentCaption} />}
+      <div className="sr-only" role="complementary" aria-label="Screen reader information">
+        <p>OPSIS — Accessibility-first examination platform. WCAG 2.2 AA compliant.</p>
+        <p>Use Alt+Up/Down to navigate sections. Tab for interactive elements. Alt+A for Accessibility Center.</p>
       </div>
     </AccessibilityContext.Provider>
   );
@@ -392,8 +384,6 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
 
 export function useAccessibility(): AccessibilityContextType {
   const context = useContext(AccessibilityContext);
-  if (!context) {
-    throw new Error('useAccessibility must be used within an AccessibilityProvider');
-  }
+  if (!context) throw new Error('useAccessibility must be used within an AccessibilityProvider');
   return context;
 }

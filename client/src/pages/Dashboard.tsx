@@ -737,63 +737,63 @@ export default function Dashboard({ currentUser }: DashboardProps) {
             </Card>
           </motion.section>
 
-          {/* ── Accessibility Status ──────────────── */}
+          {/* ── Accessibility Center ──────────────── */}
           <motion.section {...fadeUp(0.38)} aria-labelledby="a11y-heading">
-            <Card className="border-border shadow-sm">
-              <CardHeader className="pb-3 pt-5 px-5">
-                <SectionHeader id="a11y-heading" title="Accessibility Status">
+            <Card className="border-border shadow-sm overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-primary to-blue-400" aria-hidden="true" />
+              <CardHeader className="pb-2 pt-4 px-5">
+                <SectionHeader id="a11y-heading" title="Accessibility">
                   <Accessibility className="h-4 w-4 text-primary" aria-hidden="true" />
                 </SectionHeader>
               </CardHeader>
-              <CardContent className="px-5 pb-5 pt-0 space-y-2.5">
-                {[
-                  {
-                    label: 'Screen Reader',
-                    active: true,
-                    icon: Eye,
-                    note: 'WCAG 2.1 AA',
-                  },
-                  {
-                    label: 'High Contrast',
-                    active: settings?.contrastMode === 'high',
-                    icon: Eye,
-                    note: settings?.contrastMode === 'high' ? 'Enabled' : 'Off',
-                  },
-                  {
-                    label: 'Reduced Motion',
-                    active: settings?.reducedMotion,
-                    icon: Activity,
-                    note: settings?.reducedMotion ? 'Enabled' : 'Off',
-                  },
-                  {
-                    label: 'Text-to-Speech',
-                    active: settings?.speechEnabled,
-                    icon: Volume2,
-                    note: settings?.speechEnabled ? `Rate ${settings.speechRate}` : 'Off',
-                  },
-                ].map(item => {
-                  const Icon = item.icon;
-                  return (
-                    <div key={item.label} className="flex items-center justify-between py-1.5">
-                      <div className="flex items-center gap-2.5">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                        <span className="text-xs font-medium text-foreground">{item.label}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
+              <CardContent className="px-5 pb-4 pt-0">
+                {/* Active feature pills */}
+                <div className="flex flex-wrap gap-1.5 mb-3" role="list" aria-label="Active accessibility features">
+                  {[
+                    { label: 'WCAG 2.2 AA', always: true },
+                    { label: 'High Contrast', active: settings?.contrastMode === 'high' },
+                    { label: 'Dark Mode',     active: settings?.contrastMode === 'dark' },
+                    { label: 'TTS',           active: settings?.speechEnabled },
+                    { label: 'Dyslexia Font', active: settings?.fontFamily === 'dyslexia' },
+                    { label: 'Reduced Motion',active: settings?.reducedMotion },
+                    { label: 'Reading Mask',  active: settings?.readingMask },
+                    { label: 'Live Captions', active: settings?.liveCaptions },
+                  ].filter(f => f.always || f.active).map(f => (
+                    <span
+                      key={f.label}
+                      role="listitem"
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${f.always ? 'bg-primary/10 text-primary' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400'}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${f.always ? 'bg-primary' : 'bg-emerald-500'}`} aria-hidden="true" />
+                      {f.label}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Quick status rows */}
+                <div className="space-y-1.5 mb-3">
+                  {[
+                    { label: 'Screen Reader Ready', active: true, note: 'NVDA · JAWS · VoiceOver' },
+                    { label: 'Text-to-Speech',      active: !!settings?.speechEnabled, note: settings?.speechEnabled ? `${(((settings?.speechRate ?? 10))/10).toFixed(1)}× speed` : 'Off' },
+                    { label: 'Keyboard Navigation', active: true, note: 'Alt+Arrow keys' },
+                    { label: 'Font Size',           active: true, note: `${settings?.fontSize ?? 16}px` },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center justify-between py-0.5">
+                      <span className="text-xs text-muted-foreground">{item.label}</span>
+                      <div className="flex items-center gap-1.5">
                         <span className="text-[10px] text-muted-foreground">{item.note}</span>
-                        <div
-                          className={`h-2 w-2 rounded-full ${item.active ? 'bg-green-500' : 'bg-muted-foreground/30'}`}
-                          aria-label={item.active ? 'Active' : 'Inactive'}
-                        />
+                        <span className={`h-1.5 w-1.5 rounded-full ${item.active ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} aria-hidden="true" />
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {/* CTA */}
                 <div className="pt-2 border-t border-border">
-                  <Link href="/settings">
-                    <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5">
-                      <Settings className="h-3 w-3" aria-hidden="true" />
-                      Manage Accessibility
+                  <Link href="/accessibility">
+                    <Button className="w-full h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90" aria-label="Open Accessibility Center">
+                      <Accessibility className="h-3 w-3" aria-hidden="true" />
+                      Open Accessibility Center
                     </Button>
                   </Link>
                 </div>

@@ -8,9 +8,8 @@ import {
   HelpCircle, 
   LogOut,
   BookOpen,
-  GraduationCap,
   ClipboardCheck,
-  ChevronDown
+  Accessibility,
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -32,6 +31,7 @@ export function Navigation({ currentUser, onLogout }: NavigationProps) {
 
   const studentNavItems = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, 'data-testid': 'link-dashboard' },
+    { href: '/accessibility', label: 'Accessibility', icon: Accessibility, 'data-testid': 'link-accessibility' },
     { href: '/settings', label: 'Settings', icon: Settings, 'data-testid': 'link-settings' },
     { href: '/help', label: 'Help', icon: HelpCircle, 'data-testid': 'link-help' },
   ];
@@ -40,6 +40,7 @@ export function Navigation({ currentUser, onLogout }: NavigationProps) {
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, 'data-testid': 'link-dashboard' },
     { href: '/exams', label: 'Manage Exams', icon: BookOpen, 'data-testid': 'link-manage-exams' },
     { href: '/grade', label: 'Grade Answers', icon: ClipboardCheck, 'data-testid': 'link-grade-answers' },
+    { href: '/accessibility', label: 'Accessibility', icon: Accessibility, 'data-testid': 'link-accessibility' },
     { href: '/settings', label: 'Settings', icon: Settings, 'data-testid': 'link-settings' },
     { href: '/help', label: 'Help', icon: HelpCircle, 'data-testid': 'link-help' },
   ];
