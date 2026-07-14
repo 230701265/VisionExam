@@ -10,6 +10,7 @@ import {
   BookOpen,
   ClipboardCheck,
   Accessibility,
+  LayoutGrid,
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -37,15 +38,14 @@ export function Navigation({ currentUser, onLogout }: NavigationProps) {
   ];
 
   const instructorNavItems = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard, 'data-testid': 'link-dashboard' },
-    { href: '/exams', label: 'Manage Exams', icon: BookOpen, 'data-testid': 'link-manage-exams' },
-    { href: '/grade', label: 'Grade Answers', icon: ClipboardCheck, 'data-testid': 'link-grade-answers' },
+    { href: '/admin', label: 'Admin Portal', icon: LayoutGrid, 'data-testid': 'link-admin' },
+    { href: '/exams', label: 'Exam Editor', icon: BookOpen, 'data-testid': 'link-manage-exams' },
     { href: '/accessibility', label: 'Accessibility', icon: Accessibility, 'data-testid': 'link-accessibility' },
     { href: '/settings', label: 'Settings', icon: Settings, 'data-testid': 'link-settings' },
-    { href: '/help', label: 'Help', icon: HelpCircle, 'data-testid': 'link-help' },
   ];
 
-  const navItems = currentUser?.role === 'instructor' ? instructorNavItems : studentNavItems;
+  const isStaff = currentUser?.role === 'instructor' || currentUser?.role === 'admin';
+  const navItems = isStaff ? instructorNavItems : studentNavItems;
 
   const handleNavigation = (label: string) => {
     announceToScreenReader(`Navigating to ${label}`);

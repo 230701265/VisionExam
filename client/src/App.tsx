@@ -16,6 +16,7 @@ import Help from "@/pages/Help";
 import AccessibilityCenter from "@/pages/AccessibilityCenter";
 import ExamManagement from "./pages/ExamManagement";
 import GradeAnswers from "./pages/GradeAnswers";
+import AdminPortal from "@/pages/AdminPortal";
 import NotFound from "@/pages/not-found";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -346,7 +347,7 @@ function AuthForm() {
   );
 }
 
-function Router({ currentUser }: { currentUser: User }) {
+function Router({ currentUser, onLogout }: { currentUser: User; onLogout: () => void }) {
   // Enable page navigation for keyboard-only users
   const { announceHelp } = usePageNavigation({
     enableArrowNavigation: true,
@@ -355,18 +356,29 @@ function Router({ currentUser }: { currentUser: User }) {
     skipInvisible: true
   });
 
+  const isStaff = currentUser.role === 'instructor' || currentUser.role === 'admin';
+
   return (
     <Switch>
-      <Route path="/" component={() => <Dashboard currentUser={currentUser} />} />
+      <Route path="/" component={() =>
+        isStaff
+          ? <AdminPortal currentUser={currentUser} onLogout={onLogout} />
+          : <Dashboard currentUser={currentUser} />
+      } />
+      <Route path="/admin" component={() =>
+        isStaff
+          ? <AdminPortal currentUser={currentUser} onLogout={onLogout} />
+          : <Dashboard currentUser={currentUser} />
+      } />
       <Route path="/exam/:id" component={() => <ExamTaking currentUser={currentUser} />} />
       <Route path="/results/:id" component={() => <Results currentUser={currentUser} />} />
       <Route path="/settings" component={() => <Settings currentUser={currentUser} />} />
       <Route path="/help" component={() => <Help currentUser={currentUser} />} />
       <Route path="/accessibility" component={() => <AccessibilityCenter currentUser={currentUser} />} />
-      {currentUser.role === 'instructor' && (
+      {isStaff && (
         <Route path="/exams" component={() => <ExamManagement currentUser={currentUser} />} />
       )}
-      {currentUser.role === 'instructor' && (
+      {isStaff && (
         <Route path="/grade" component={() => <GradeAnswers currentUser={currentUser} />} />
       )}
       <Route component={NotFound} />
@@ -452,7 +464,7 @@ function App() {
             </div>
 
             <Navigation currentUser={currentUser} onLogout={handleLogout} />
-            <Router currentUser={currentUser} />
+            <Router currentUser={currentUser} onLogout={handleLogout} />
             <InternationalKeyboardHelp />
             
             {/* Floating Accessibility Button */}

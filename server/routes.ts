@@ -266,6 +266,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Admin routes ────────────────────────────────────────────
+  app.get("/api/admin/users", async (_req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.put("/api/admin/users/:id/role", async (req, res) => {
+    try {
+      const { role } = req.body;
+      if (!['student', 'instructor', 'admin'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      const user = await storage.updateUserRole(req.params.id, role);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json(user);
+    } catch {
+      res.status(500).json({ message: "Failed to update role" });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", async (req, res) => {
+    try {
+      const ok = await storage.deleteUser(req.params.id);
+      if (!ok) return res.status(404).json({ message: "User not found" });
+      res.json({ message: "User deleted" });
+    } catch {
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  app.get("/api/admin/stats", async (_req, res) => {
+    try {
+      const [users, exams] = await Promise.all([
+        storage.getAllUsers(),
+        storage.getAllActiveExams(),
+      ]);
+      const students  = users.filter(u => u.role === 'student').length;
+      const faculty   = users.filter(u => u.role === 'instructor').length;
+      res.json({ totalUsers: users.length, students, faculty, totalExams: exams.length });
+    } catch {
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.get("/api/admin/questions", async (_req, res) => {
+    try {
+      const exams = await storage.getAllActiveExams();
+      const questionPromises = exams.map(e => storage.getQuestionsByExam(e.id));
+      const nested = await Promise.all(questionPromises);
+      const questions = nested.flat();
+      res.json(questions);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch questions" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
