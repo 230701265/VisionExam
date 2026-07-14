@@ -1324,7 +1324,7 @@ const NAV_ITEMS = [
   { id: 'question_bank',    label: 'Question Bank',         icon: BookOpen,         group: 'academic' },
   { id: 'subjects',         label: 'Subjects',              icon: Library,          group: 'academic' },
   { id: 'exams',            label: 'Exams',                 icon: FileText,         group: 'academic' },
-  { id: 'analytics',        label: 'Analytics',             icon: BarChart3,        group: 'insights' },
+  { id: 'analytics',        label: 'Analytics',             icon: BarChart3,        group: 'insights', href: '/analytics' },
   { id: 'reports',          label: 'Reports',               icon: Download,         group: 'insights' },
   { id: 'a11y_reports',     label: 'Accessibility',         icon: Accessibility,    group: 'insights' },
   { id: 'announcements',    label: 'Announcements',         icon: Megaphone,        group: 'comms' },
@@ -1421,7 +1421,7 @@ export default function AdminPortal({ currentUser, onLogout }: AdminPortalProps)
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActive(item.id)}
+                      onClick={() => { if ((item as any).href) { nav((item as any).href); } else { setActive(item.id); } }}
                       title={collapsed ? item.label : undefined}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 mx-1 rounded-lg text-sm font-medium transition-all duration-100 relative group
                         ${isActive

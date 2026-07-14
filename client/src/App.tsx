@@ -17,6 +17,7 @@ import AccessibilityCenter from "@/pages/AccessibilityCenter";
 import ExamManagement from "./pages/ExamManagement";
 import GradeAnswers from "./pages/GradeAnswers";
 import AdminPortal from "@/pages/AdminPortal";
+import AnalyticsDashboard from "@/pages/AnalyticsDashboard";
 import NotFound from "@/pages/not-found";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -380,6 +381,9 @@ function Router({ currentUser, onLogout }: { currentUser: User; onLogout: () => 
       )}
       {isStaff && (
         <Route path="/grade" component={() => <GradeAnswers currentUser={currentUser} />} />
+      )}
+      {isStaff && (
+        <Route path="/analytics" component={() => <AnalyticsDashboard currentUser={currentUser} />} />
       )}
       <Route component={NotFound} />
     </Switch>
