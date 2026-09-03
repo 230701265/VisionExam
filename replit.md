@@ -76,3 +76,11 @@ Cross-Platform Support: Mac-compatible shortcuts using Option key instead of Alt
 ✓ **Enhanced Accessibility Architecture**: Created InternationalKeyboardHelp and useInternationalKeyboardNavigation hook
 ✓ **Database Schema Updates**: Added coding question fields, test cases, and code submission tracking
 ✓ **Component Architecture**: Created CodingQuestionRenderer and integrated with existing QuestionRenderer system
+
+## Running on Replit
+
+- Start the development app with `npm run dev`.
+- The app serves both the client and API on port 5000.
+- Development uses the in-memory storage implementation, so a database connection is not required for the preview.
+- Use `npm run build` followed by `npm start` for the production build.
+- Database schema commands such as `npm run db:push` require `DATABASE_URL`.

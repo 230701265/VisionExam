@@ -1346,6 +1346,7 @@ const GROUP_LABELS: Record<string, string> = {
 export default function AdminPortal({ currentUser, onLogout }: AdminPortalProps) {
   const [active, setActive] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
+  const [, nav] = useLocation();
   const { toast } = useToast();
 
   const { data: exams = [], isLoading: examsLoading } = useQuery<Exam[]>({ queryKey: ['/api/exams'] });

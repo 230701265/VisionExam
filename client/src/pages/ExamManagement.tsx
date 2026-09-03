@@ -610,7 +610,7 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                               <p className="mb-2" data-testid={`text-question-${index + 1}`}>
                                 {question.text}
                               </p>
-                              {question.type === 'multiple_choice' && question.options && Array.isArray(question.options) && (
+                              {question.type === 'multiple_choice' && Array.isArray(question.options) && (
                                 <div className="text-sm text-gray-600 dark:text-gray-400">
                                   <strong>Options:</strong>{' '}
                                   {(question.options as MultipleChoiceOption[]).map((opt, i) => (
