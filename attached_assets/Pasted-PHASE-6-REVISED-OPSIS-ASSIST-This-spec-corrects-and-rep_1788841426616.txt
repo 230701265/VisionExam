@@ -1,0 +1,131 @@
+PHASE 6 (REVISED) — "OPSIS ASSIST"
+
+This spec corrects and replaces the earlier 8-item draft based on a full code
+review. Do not implement the earlier draft — this version accounts for two
+listeners the original draft missed and fixes an internal contradiction.
+
+1. FULL INVENTORY OF WHAT'S BEING REPLACED (all 5, not 3):
+   - useInternationalKeyboardNavigation.ts (global capture-phase listener,
+     mounted in AccessibilityProvider.tsx)
+   - usePageNavigation.ts (global bubble-phase listener + MutationObserver,
+     mounted in App.tsx's Router)
+   - useKeyboardNavigation.ts, called directly in ExamTaking.tsx and
+     CodeEditor.tsx (useGlobalNavigation is dead code — delete it too so it
+     can't be reintroduced later)
+   - The Ctrl+Shift+Space listener currently inside useVoiceCommands.ts —
+     this must be removed from there entirely, since it's becoming the
+     Assist toggle and needs a single owner
+   - The standalone Alt+A capture-phase listener in App.tsx (not part of any
+     named hook, but still a competing global listener that must be folded
+     into the unified controller)
+
+2. SINGLE OWNER, REMOVED IN THE SAME CHANGE THAT REPLACES IT:
+   Build one "OPSIS Assist controller" (recommend owning it inside
+   AccessibilityProvider.tsx) that owns: the one global keyboard listener,
+   the reading cursor + DOM scanner/observer, the one recognition session,
+   and routes narration through the existing VoiceNarrator/speak() queue —
+   don't create a second speech engine.
+   Delete all 5 old listeners' mount sites AND their owning hook files in
+   the same coherent change that installs the controller — not as a
+   separate later cleanup step. Do not leave old hook files in the codebase
+   unmounted "just in case."
+
+3. EXTRACT, DON'T EXTEND, THE SCANNER:
+   Move usePageNavigation.ts's DOM-discovery logic (findNavigableElements
+   and friends) into a new standalone module owned by the Assist
+   controller, extended to also capture non-interactive readable content
+   (headings, paragraphs, question text, labels) with a spoken description
+   per node (role + accessible name + state, e.g. "Radio button, Option B,
+   C plus plus, not selected"). The old hook itself is deleted, not kept
+   running alongside the new reading cursor.
+
+4. SCOPED REGISTRATION, NOT GLOBAL TABLES:
+   The unified controller must expose a way for a mounted page/component to
+   register scoped shortcuts and voice commands for as long as it's
+   mounted (e.g. ExamTaking registers next/previous/flag/read/help/
+   voice-toggle; CodeEditor registers run/reset/save/font-size), rather than
+   every page reading from one hardcoded global shortcut table. This is how
+   the existing exam and editor shortcuts get preserved — they are migrated
+   into scoped registrations, not deleted outright and not left in their
+   old standalone hooks.
+   Fix the stale coupling found in ExamTaking's current Ctrl+M handler,
+   which looks for a button with data-testid="button-voice-input" — that
+   element no longer exists; the real one is "button-voice-command". Fold
+   this into the Assist mic/voice-toggle behavior rather than re-creating
+   the same stale lookup.
+
+5. KEYBOARD EXEMPTIONS (must be explicit, not assumed):
+   The Assist reading cursor's Up/Down/Enter/Space must NOT hijack:
+   - Focus inside the Monaco editor (preserve the existing exclusion logic
+     from the old international hook)
+   - Native <select> elements, sliders, tabs, and radio groups, which
+     already use arrow keys natively
+   - Any input, textarea, or contenteditable element currently being typed
+     into
+   Monaco's own F5/F9 commands (registered via editor.addCommand) stay
+   editor-local; only non-editor actions (Ctrl+S, font size) move into the
+   unified controller's scoped registration for CodeEditor.
+
+6. CONTINUOUS VOICE MODE — TREAT AS A REWRITE, NOT A FLAG:
+   Retire the unused legacy useSpeechRecognition.ts hook rather than trying
+   to extend it. Build ONE recognition controller (used by both Assist
+   continuous mode and the existing push-to-talk mode) that implements:
+   - A "desired active" flag separate from "recognizer currently running"
+   - Controlled restart: only restart on end/error if still desired active
+   - Terminal error handling: permission-denied and unsupported-browser
+     errors stop trying, with a clear user-facing message — no retry loop
+   - Backoff on repeated network/service failures
+   - Session generation guards so a stale recognizer instance's callbacks
+     can't fire after Assist is turned off or a new session starts
+   - Guaranteed cleanup on: Assist toggle off, route change, logout, and
+     provider unmount
+   - Duplicate-command protection/cooldown for repeated final transcripts,
+     especially for destructive commands (stageSubmit/confirmSubmit) —
+     preserve the existing two-stage submission confirmation
+   - Only stable final transcript segments reach command matching, not
+     interim results
+   Move both push-to-talk and Assist's continuous mode onto this one
+   controller — do not maintain two separate recognition implementations
+   (voice/speechRecognition.ts and the legacy hook) side by side.
+
+7. NARRATOR / MICROPHONE FEEDBACK LOOP:
+   While Assist narration is speaking (via VoiceNarrator), pause or mute
+   command recognition — or explicitly gate dispatch — so the microphone
+   doesn't pick up OPSIS's own spoken output and misinterpret it as a voice
+   command. This was missing from the original spec entirely.
+
+8. TWO SEPARATE CONCEPTS, NOT ONE voiceMode FIELD:
+   Split "Assist voice commands active" from "Assist narration active" as
+   independent settings — the current single voiceMode ('off' |
+   'push-to-talk') field in AccessibilitySettings is not sufficient once
+   continuous listening and optional narration coexist. Update
+   AccessibilityCenter.tsx's voice-navigation section and VoiceControl.tsx
+   to reflect both states independently, plus unsupported/permission-denied
+   states.
+
+9. TOGGLE + FIRST-RUN FLOW:
+   Ctrl+Shift+Space becomes the single Assist on/off toggle, owned only by
+   the new controller. Turning it on: announces "OPSIS Assist on", starts
+   the reading cursor at the top of main content, and starts continuous
+   voice listening. Turning it off: announces "OPSIS Assist off" and stops
+   both cleanly (see item 6's cleanup requirement).
+   On first activation ever, ask once: "Do you already use a screen reader
+   like VoiceOver, NVDA, or JAWS?" Persist TWO pieces of state — whether
+   the question has been asked, and the answer — so "not asked yet" and
+   "answered no" are distinguishable. If yes, default automatic narration
+   OFF (voice commands remain available either way). Then play a short
+   spoken first-run tutorial covering: Up/Down to move the reading cursor,
+   Enter/Space to activate, speaking a command any time, and the toggle
+   shortcut to turn Assist off.
+
+10. DOCUMENTATION:
+    Document in the Help dialog and Accessibility Center, plainly, that
+    OPSIS Assist is a purpose-built in-app reader for OPSIS's own content —
+    it has no access to the OS accessibility tree, cannot read outside the
+    page, and does not replace NVDA/JAWS/VoiceOver.
+
+11. VERIFY NO ORPHANED CONSUMERS:
+    Results.tsx currently mounts its own separate useVoiceCommands instance
+    — confirm it registers into the single Assist-owned recognition session
+    via the scoped-registration API (item 4) rather than starting its own
+    parallel listener.
