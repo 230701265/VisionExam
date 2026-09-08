@@ -36,6 +36,7 @@ const LANGUAGE_CONFIGS = {
   go: { name: 'Go', extension: 'go', monacoLang: 'go' },
   rust: { name: 'Rust', extension: 'rs', monacoLang: 'rust' },
 };
+const EXECUTABLE_LANGUAGES: ProgrammingLanguage[] = ['javascript', 'typescript', 'python'];
 
 const getDefaultCode = (language: ProgrammingLanguage): string => {
   const templates: Record<ProgrammingLanguage, string> = {
@@ -114,6 +115,7 @@ export function CodeEditor({
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
   const [showOutput, setShowOutput] = useState(false);
   const [fontSize, setFontSize] = useState(14);
+  const executionSupported = EXECUTABLE_LANGUAGES.includes(selectedLanguage);
   
   const { announceToScreenReader } = useAccessibility();
   const editorRef = useRef<any>(null);
@@ -191,7 +193,10 @@ export function CodeEditor({
   };
 
   const handleExecute = async () => {
-    if (!onExecute || isExecuting) return;
+    if (!onExecute || isExecuting || !executionSupported) {
+      if (!executionSupported) announceToScreenReader(`${LANGUAGE_CONFIGS[selectedLanguage].name} execution is not supported yet.`);
+      return;
+    }
     
     setIsExecuting(true);
     setShowOutput(true);
@@ -283,9 +288,9 @@ export function CodeEditor({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(LANGUAGE_CONFIGS).map(([key, config]) => (
+                  {EXECUTABLE_LANGUAGES.map((key) => (
                     <SelectItem key={key} value={key}>
-                      {config.name}
+                      {LANGUAGE_CONFIGS[key].name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -299,7 +304,7 @@ export function CodeEditor({
           <div className="flex items-center gap-2 mb-4">
             <Button
               onClick={handleExecute}
-              disabled={isExecuting || readOnly}
+              disabled={isExecuting || readOnly || !executionSupported}
               className="bg-green-600 hover:bg-green-700"
               data-testid="button-execute"
             >

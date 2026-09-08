@@ -38,8 +38,7 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   username: z.string().min(3, "Roll number/Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["student", "instructor"]).default("student"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -62,7 +61,7 @@ function AuthForm() {
 
   const registerForm = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { username: "", password: "", role: "student" },
+    defaultValues: { username: "", password: "" },
   });
 
   const loginMutation = useMutation({
@@ -300,7 +299,7 @@ function AuthForm() {
                   type="password"
                   {...registerForm.register('password')}
                   className="mt-1.5 h-10 text-sm"
-                  placeholder="Min. 6 characters"
+                  placeholder="Min. 8 characters"
                   data-testid="input-register-password"
                   autoComplete="new-password"
                 />
@@ -309,21 +308,6 @@ function AuthForm() {
                     {registerForm.formState.errors.password.message}
                   </p>
                 )}
-              </div>
-
-              <div>
-                <Label htmlFor="register-role" className="text-sm font-medium text-foreground">
-                  I am a…
-                </Label>
-                <select
-                  id="register-role"
-                  {...registerForm.register('role')}
-                  className="mt-1.5 block w-full h-10 px-3 py-2 border border-input rounded-lg bg-background text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                  data-testid="select-register-role"
-                >
-                  <option value="student">Student</option>
-                  <option value="instructor">Instructor</option>
-                </select>
               </div>
 
               <Button
@@ -337,11 +321,13 @@ function AuthForm() {
             </form>
           )}
 
-          <div className="mt-6 pt-5 border-t border-border">
-            <p className="text-xs text-muted-foreground text-center">
-              Demo — Student: <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">S001</code> · Instructor: <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">instructor</code> · Password: <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">password123</code>
-            </p>
-          </div>
+          {import.meta.env.DEV && (
+            <div className="mt-6 pt-5 border-t border-border">
+              <p className="text-xs text-muted-foreground text-center">
+                Demo — Student: <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">S001</code> · Instructor: <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">instructor</code> · Password: <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">password123</code>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -392,17 +378,38 @@ function Router({ currentUser, onLogout }: { currentUser: User; onLogout: () => 
 
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authorizationError, setAuthorizationError] = useState('');
   const [isQuickPanelOpen, setIsQuickPanelOpen] = useState(false);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        setCurrentUser(JSON.parse(savedUser));
-      } catch {
-        localStorage.removeItem('user');
-      }
-    }
+    let active = true;
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(async response => response.ok ? response.json() : null)
+      .then(data => {
+        if (active) setCurrentUser(data?.user ?? null);
+      })
+      .catch(() => {
+        if (active) setCurrentUser(null);
+      })
+      .finally(() => {
+        if (active) setAuthLoading(false);
+      });
+
+    const handleUnauthorized = () => {
+      localStorage.removeItem('user');
+      setCurrentUser(null);
+    };
+    const handleForbidden = (event: Event) => {
+      setAuthorizationError((event as CustomEvent<string>).detail || 'You do not have permission to perform that action.');
+    };
+    window.addEventListener('opsis:unauthorized', handleUnauthorized);
+    window.addEventListener('opsis:forbidden', handleForbidden);
+    return () => {
+      active = false;
+      window.removeEventListener('opsis:unauthorized', handleUnauthorized);
+      window.removeEventListener('opsis:forbidden', handleForbidden);
+    };
   }, []);
 
   // Keyboard shortcut for accessibility panel
@@ -436,10 +443,19 @@ function App() {
     return () => document.removeEventListener('keydown', handleKeyboard, true);
   }, [isQuickPanelOpen]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiRequest('POST', '/api/auth/logout');
+    } catch {
+      // Clear client state even if the session has already expired.
+    }
     localStorage.removeItem('user');
     setCurrentUser(null);
   };
+
+  if (authLoading) {
+    return <div className="min-h-screen grid place-items-center" role="status">Checking your session…</div>;
+  }
 
   if (!currentUser) {
     return (
@@ -468,6 +484,12 @@ function App() {
             </div>
 
             <Navigation currentUser={currentUser} onLogout={handleLogout} />
+            {authorizationError && (
+              <div role="alert" className="mx-auto mt-4 flex max-w-4xl items-center justify-between gap-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <span>{authorizationError}</span>
+                <Button variant="ghost" size="sm" onClick={() => setAuthorizationError('')}>Dismiss</Button>
+              </div>
+            )}
             <Router currentUser={currentUser} onLogout={handleLogout} />
             <InternationalKeyboardHelp />
             

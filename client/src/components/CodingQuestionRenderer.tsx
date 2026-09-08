@@ -55,7 +55,6 @@ export function CodingQuestionRenderer({
         code,
         language: selectedLanguage,
         attemptId,
-        testCases
       });
       
       const result = await response.json() as CodeExecutionResult;

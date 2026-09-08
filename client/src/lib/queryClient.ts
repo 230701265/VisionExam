@@ -3,7 +3,19 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let message = text;
+    try {
+      message = JSON.parse(text).message || text;
+    } catch {
+      // Keep non-JSON server errors readable.
+    }
+    if (res.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("opsis:unauthorized"));
+    }
+    if (res.status === 403 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("opsis:forbidden", { detail: message }));
+    }
+    throw new Error(`${res.status}: ${message}`);
   }
 }
 

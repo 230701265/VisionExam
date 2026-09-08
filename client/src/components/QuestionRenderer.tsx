@@ -22,6 +22,7 @@ interface QuestionRendererProps {
   isFirst?: boolean;
   isLast?: boolean;
   isFlagged?: boolean;
+  attemptId?: string;
   onCodeVoiceActionsReady?: (actions: CodeEditorVoiceActions | null) => void;
 }
 
@@ -37,6 +38,7 @@ export function QuestionRenderer({
   isFirst = false,
   isLast = false,
   isFlagged = false,
+  attemptId,
   onCodeVoiceActionsReady,
 }: QuestionRendererProps) {
   const { speak, announceToScreenReader } = useAccessibility();
@@ -307,6 +309,7 @@ export function QuestionRenderer({
             onAnswerChange={onAnswerChange}
             questionNumber={questionNumber}
             totalQuestions={totalQuestions}
+            attemptId={attemptId}
             onVoiceActionsReady={onCodeVoiceActionsReady}
           />
         )}

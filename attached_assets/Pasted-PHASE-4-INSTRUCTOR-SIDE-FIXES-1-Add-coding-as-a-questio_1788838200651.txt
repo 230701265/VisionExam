@@ -1,0 +1,88 @@
+PHASE 4 — INSTRUCTOR-SIDE FIXES
+
+1. Add "coding" as a question type in ExamManagement.tsx's question form, with
+   fields for programming language, starter code, test cases (input/expected
+   output/description/isHidden), time limit, and memory limit — matching the
+   fields that already exist in shared/schema.ts's questions table and that
+   CodingQuestionRenderer.tsx already expects. Instructors currently have no
+   way to author the coding questions the platform is built around.
+
+2. Add the missing GET /api/attempts/instructor/:instructorId route in
+   server/routes.ts that GradeAnswers.tsx already expects — it should return
+   all exam attempts for exams created by that instructor (join/filter
+   attempts by exam.createdBy === instructorId), not all attempts globally.
+
+3. Add `graded` (boolean) and `teacherFeedback` (text) columns to the
+   examAttempts table in shared/schema.ts, generate the migration, and update
+   the PUT /api/attempts/:id route to accept and persist them.
+
+4. Fix the grading score bug in GradeAnswers.tsx: when submitting grades for
+   short-answer questions, ADD the new short-answer score to the
+   already-earned score from auto-graded questions (multiple_choice,
+   true_false, coding) — don't overwrite the attempt's total score with only
+   the short-answer sum.
+
+5. Fix /api/exams so it only returns exams created by the requesting
+   instructor (or all exams to admins/students as appropriate) instead of
+   every instructor's exams to everyone — this depends on the Phase 1
+   authorization work being in place.
+
+6. Replace the fabricated data in AnalyticsDashboard.tsx with real queries:
+   usage trends, score distribution, and completion times should be derived
+   from actual examAttempts/codeSubmissions records via new aggregation
+   endpoints (e.g. GET /api/admin/analytics/usage, /score-distribution,
+   /difficult-questions), scoped to date range. Where a metric genuinely has
+   no underlying data yet (e.g. voice recognition accuracy, since that's
+   client-side only), remove that chart or clearly label it "Not yet
+   tracked" rather than showing invented numbers.
+
+7. Add an accessible alternative for every chart on the Analytics Dashboard:
+   a toggleable/adjacent data table (or a visually-hidden but
+   screen-reader-readable summary of the key trend) for each chart, and a
+   proper role="img" + descriptive aria-label summarizing what the chart
+   shows, not just the section wrapper.
+
+
+PHASE 5 — ADDITIONAL FEATURES FOR VISUALLY IMPAIRED USERS
+
+1. Make the accessibility settings that are currently stored-but-inert
+   actually do something (or remove them if out of scope for now):
+   Highlight Links, Text Alignment (site-wide, not just the preview panel),
+   Paragraph Spacing, Landmark Navigation toggle, Announce Changes, Sticky
+   Focus, Verbose SR Mode, Show Tooltips, Sound Effects, Audio Descriptions,
+   and the Keyboard Navigation Mode selector (standard/enhanced/custom)
+   in AccessibilityProvider.tsx / AccessibilityCenter.tsx.
+
+2. Announce the specific selection, not just "Answer updated", when a
+   multiple-choice or true/false answer changes in QuestionRenderer.tsx —
+   e.g. "Option B selected: <option text>".
+
+3. Add an instructor-settable accommodation: extra time (percentage or fixed
+   minutes) and/or a "reader/scribe" flag per student per exam, stored on
+   examAttempts or a new accommodations table, and have ExamTaking.tsx's
+   timer read from it instead of a flat exam.duration for everyone.
+
+4. Require instructors to add an alt-text/description field whenever a
+   question includes an image, diagram, or chart (add an `imageDescription`
+   field to the questions schema and make it required in ExamManagement.tsx
+   when an image is attached), and have QuestionRenderer.tsx read it aloud
+   via the existing audioDescriptions setting.
+
+5. Add finer-grained timer audio cues in ExamTaking.tsx during the final 60
+   seconds — e.g. a short spoken or tonal cue every 15 seconds — instead of
+   only the single 1-minute-remaining announcement.
+
+6. Add a continuous-listening voice mode as an alternative to push-to-talk
+   in useVoiceCommands/VoiceControl.tsx, so a blind student can navigate an
+   entire exam by voice without needing to locate and press a microphone
+   button first.
+
+7. Implement the "custom" keyboard navigation mode already listed in
+   AccessibilitySettings (keyboardNavigation: 'custom') — a settings screen
+   where a user can view and remap/disable individual shortcuts, so screen
+   reader users can resolve any shortcut collisions with their own assistive
+   technology themselves.
+
+8. Add a data-table fallback for any chart-based content students see
+   (e.g. score breakdowns on Results.tsx, if it uses charts) — same
+   principle as Phase 4 item 7, applied to the student-facing side.

@@ -164,6 +164,7 @@ export interface TestResult {
   expectedOutput: string;
   executionTime: number;
   error?: string;
+  isHidden?: boolean;
 }
 
 export interface CodeExecutionResult {

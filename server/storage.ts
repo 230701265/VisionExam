@@ -9,6 +9,7 @@ import {
   type ExamAttemptWithDetails
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import bcrypt from "bcryptjs";
 
 export interface IStorage {
   // User operations
@@ -28,6 +29,7 @@ export interface IStorage {
   updateExam(id: string, exam: Partial<Exam>): Promise<Exam | undefined>;
 
   // Question operations
+  getQuestion(id: string): Promise<Question | undefined>;
   getQuestionsByExam(examId: string): Promise<Question[]>;
   createQuestion(question: InsertQuestion): Promise<Question>;
   updateQuestion(id: string, question: Partial<Question>): Promise<Question | undefined>;
@@ -52,6 +54,7 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
+  readonly ready: Promise<void>;
   private users: Map<string, User>;
   private exams: Map<string, Exam>;
   private questions: Map<string, Question>;
@@ -68,10 +71,23 @@ export class MemStorage implements IStorage {
     this.codeSubmissions = new Map();
     
     // Initialize with sample data
-    this.initializeSampleData();
+    this.ready = this.initializeSampleData();
   }
 
   private async initializeSampleData() {
+    if (process.env.NODE_ENV === "production") {
+      const username = process.env.BOOTSTRAP_ADMIN_USERNAME;
+      const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+      if ((username && !password) || (!username && password) || (password && password.length < 12)) {
+        throw new Error("Production admin bootstrap requires both variables and a password of at least 12 characters");
+      }
+      if (username && password) {
+        const admin = await this.createUser({ username, password, role: "admin" });
+        await this.createUserSettings({ userId: admin.id });
+      }
+      return;
+    }
+
     // Create sample instructor user
     const instructor = await this.createUser({
       username: "instructor",
@@ -256,8 +272,12 @@ print(find_max([1, 3, 2, 8, 5]))  # Should output 8`,
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
+    const password = insertUser.password.startsWith("$2")
+      ? insertUser.password
+      : await bcrypt.hash(insertUser.password, 12);
     const user: User = { 
       ...insertUser, 
+      password,
       id,
       role: insertUser.role || 'student'
     };
@@ -325,6 +345,10 @@ print(find_max([1, 3, 2, 8, 5]))  # Should output 8`,
   }
 
   // Question operations
+  async getQuestion(id: string): Promise<Question | undefined> {
+    return this.questions.get(id);
+  }
+
   async getQuestionsByExam(examId: string): Promise<Question[]> {
     return Array.from(this.questions.values())
       .filter(question => question.examId === examId)

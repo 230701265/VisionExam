@@ -1,0 +1,125 @@
+PHASE 1 — SECURITY & GRADING INTEGRITY (do this first, on its own)
+
+1. Password security: hash passwords with bcrypt on registration
+   (server/storage.ts createUser / server/routes.ts /api/auth/register),
+   and compare with bcrypt.compare on login (/api/auth/login) instead of
+   the current plaintext `user.password !== password` check.
+
+2. Server-side authorization: add middleware that reads the logged-in
+   user's id/role from a real session (not just trusting the client) and
+   enforce it on every route in server/routes.ts. Specifically:
+   - All /api/admin/* routes must require role === 'admin'.
+   - /api/attempts/:id and /api/settings/:userId PUT routes must verify
+     the requester owns that attempt/settings record before allowing writes.
+   - /api/exams and /api/questions write routes must require
+     role === 'instructor' or 'admin'.
+   Return 401/403 appropriately, and update the client to handle those
+   responses gracefully.
+
+3. Validate all PUT routes with the existing Zod schemas from
+   shared/schema.ts (insertExamSchema.partial(), insertQuestionSchema.partial(),
+   etc.) instead of accepting raw req.body directly.
+
+4. Fix the hardcoded submission user: in /api/code/execute
+   (server/routes.ts), stop using userId: "current-user" — pass the real
+   authenticated user's id from the session/request instead.
+
+5. Replace the fake code execution in simulateCodeExecution()
+   (server/routes.ts) with real execution:
+   - For JavaScript/TypeScript, run the submitted code against each test
+     case's input in an isolated sandboxed context (e.g. Node's vm module
+     with a timeout, or a properly sandboxed child process), capture real
+     stdout, and compare it against expectedOutput.
+   - For Python, execute similarly in a restricted subprocess with a
+     timeout and resource limits.
+   - If sandboxing other languages (Java/C++/Go/Rust) isn't feasible right
+     now, disable those language options in the UI rather than silently
+     returning random results, and clearly label any remaining simulated
+     languages as "Simulated — not yet supported" until real execution
+     is wired up. Do not fabricate pass/fail results.
+   - Remove the empty python_server/ directory or actually implement it
+     as the real execution backend — don't leave a dead folder.
+
+6. Fix coding-question scoring: in the exam submit logic
+   (client/src/pages/ExamTaking.tsx submitExamMutation), a question's
+   score should NOT be computed by answers[question.id] === question.correctAnswer
+   for type === 'coding'. Instead, base coding-question credit on the
+   actual test case pass count/ratio from real code execution, stored via
+   codeSubmissions, and combine that with the existing exact-match logic
+   for multiple_choice/short_answer/true_false.
+
+
+PHASE 2 — KEYBOARD NAVIGATION CONSOLIDATION
+
+There are currently three separate, overlapping global keydown handlers:
+useInternationalKeyboardNavigation (in AccessibilityProvider.tsx),
+usePageNavigation (used in App.tsx's Router), and
+useKeyboardNavigation/useGlobalNavigation (client/src/hooks/useKeyboardNavigation.ts).
+They all bind Alt+Arrow keys and Alt+letter landmark shortcuts (M, N, F, H,
+B, L, I, C, 1-6), and they conflict with page-specific shortcuts in
+ExamTaking.tsx (which separately binds Alt+N for next question, Alt+F for
+flag, Alt+R for read, Alt+H for help) and in CodeEditor.tsx.
+
+1. Consolidate into a single keyboard-shortcut hook used app-wide. Delete
+   the redundant ones (useKeyboardNavigation/useGlobalNavigation's
+   duplicate global shortcuts, and usePageNavigation if its
+   functionality is now covered by the international nav hook).
+
+2. Gate the "enhanced" landmark/element-type shortcuts (Alt+M/N/F/H/B/L/I/C/1-6)
+   behind the existing settings.keyboardNavigation setting
+   ('standard' | 'enhanced' | 'custom') — right now this setting exists
+   in AccessibilityProvider.tsx but nothing actually checks it.
+
+3. Resolve the collisions on the exam page: rename or rescope
+   ExamTaking's Alt+N/Alt+F/Alt+R/Alt+H so they don't fight the global
+   landmark shortcuts while an exam is active — e.g. disable the global
+   landmark-navigation Alt+letter shortcuts specifically on the /exam/:id
+   route, or move the exam-specific actions to a modifier combo that
+   isn't already claimed (e.g. Alt+Shift+N/F/R).
+
+4. Fix the bug where Alt+ArrowDown/Up fires even when focus is on a
+   native <select> element, which breaks the browser's native
+   "open dropdown" behavior for that key combo. Exclude focused
+   <select> elements from the custom arrow-key handling.
+
+5. Remove the duplicate Previous/Next/Flag/Read-aloud buttons — right
+   now both QuestionRenderer.tsx and ExamTaking.tsx render their own
+   full set of these controls on every question. Keep only one set
+   (recommend keeping ExamTaking's fixed footer version and removing
+   QuestionRenderer's), and remove the duplicate
+   data-testid="button-read-question" this causes.
+
+
+PHASE 3 — ACCESSIBILITY FIXES FOR VISUALLY IMPAIRED USERS
+
+1. Add tabindex="-1" to the skip-link targets (#main-content and
+   #navigation, in App.tsx / ExamTaking.tsx / Navigation.tsx) so
+   "Skip to main content" and "Skip to navigation" actually move
+   keyboard focus, not just scroll position.
+
+2. When a multiple-choice or true/false answer changes
+   (QuestionRenderer.tsx handleAnswerChange), announce the specific
+   option selected (e.g. "Option B selected: <option text>") instead of
+   the generic "Answer updated."
+
+3. Make the reading mask and reading guide overlays in
+   AccessibilityProvider.tsx respond to keyboard focus position (e.g.
+   track document.activeElement's bounding rect) in addition to mouse
+   position — currently they only follow the mouse, which is useless
+   for keyboard-only/blind users.
+
+4. Wire up the existing extendedTimeouts / timeoutWarnings accessibility
+   settings to the actual exam timer in ExamTaking.tsx — right now they
+   exist in the settings schema but don't affect exam.duration or
+   timeRemaining at all. Add a per-student or per-accommodation time
+   multiplier that instructors can grant.
+
+5. Use role="alert" (not just plain text) on form validation error
+   messages in App.tsx's login/register forms so screen readers announce
+   them immediately when they appear.
+
+6. Add a plain-text/plain-textarea fallback mode for the code editor
+   (CodeEditor.tsx) as an alternative to Monaco for screen reader users
+   who find Monaco's editing model difficult — a simple <textarea> with
+   syntax highlighting read out on demand, toggleable from the
+   Accessibility Center.

@@ -115,9 +115,6 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
     mutationFn: async (examId: string) => {
       const response = await apiRequest('POST', '/api/attempts', {
         examId,
-        userId: currentUser.id,
-        totalQuestions: exam?.questions.length || 0,
-        answers: {},
       });
       return response.json();
     },
@@ -152,14 +149,8 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
   const submitExamMutation = useMutation({
     mutationFn: async () => {
       if (!examAttemptId || !exam) throw new Error('No exam attempt found');
-      let score = 0;
-      exam.questions.forEach((question) => {
-        if (answers[question.id] === question.correctAnswer) score += question.points;
-      });
       const response = await apiRequest('PUT', `/api/attempts/${examAttemptId}`, {
         answers,
-        score,
-        correctAnswers: score,
         completedAt: new Date().toISOString(),
         timeSpent: exam.duration - Math.floor(timeRemaining / 60),
       });
@@ -825,6 +816,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
                   onNext={currentQuestionIndex < exam.questions.length - 1 ? () => dispatchExamAction('nextQuestion', 'button') : undefined}
                   onPrevious={currentQuestionIndex > 0 ? () => dispatchExamAction('previousQuestion', 'button') : undefined}
                   onFlag={() => dispatchExamAction('flagQuestion', 'button')}
+                  attemptId={examAttemptId ?? undefined}
                   onCodeVoiceActionsReady={registerCodeVoiceActions}
                   isFirst={currentQuestionIndex === 0}
                   isLast={currentQuestionIndex === exam.questions.length - 1}
