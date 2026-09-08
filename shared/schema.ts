@@ -73,6 +73,9 @@ export const userSettings = pgTable("user_settings", {
   contrastMode: text("contrast_mode").notNull().default("normal"), // normal, high, dark
   speechRate: integer("speech_rate").notNull().default(10), // 0.5 to 2.0, stored as 5-20
   speechVolume: integer("speech_volume").notNull().default(80),
+  speechPitch: integer("speech_pitch").notNull().default(10),
+  speechVoice: text("speech_voice").notNull().default(""),
+  voiceMode: text("voice_mode").notNull().default("push-to-talk"),
   audioInstructions: boolean("audio_instructions").notNull().default(true),
   soundEffects: boolean("sound_effects").notNull().default(true),
   reducedMotion: boolean("reduced_motion").notNull().default(false),

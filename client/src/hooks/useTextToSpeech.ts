@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
+import { useCallback } from 'react';
+import { useAccessibility } from '@/components/AccessibilityProvider';
 
 interface UseTextToSpeechProps {
   rate?: number;
@@ -11,53 +12,29 @@ export function useTextToSpeech({
   volume = 0.8,
   voice
 }: UseTextToSpeechProps = {}) {
-  const [speaking, setSpeaking] = useState(false);
-  const [supported, setSupported] = useState(true);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const {
+    speak: narrate,
+    stopSpeaking,
+    pauseSpeaking,
+    resumeSpeaking,
+    isSpeaking: speaking,
+    speechSupported: supported,
+  } = useAccessibility();
 
   const speak = useCallback((text: string, options?: Partial<UseTextToSpeechProps>) => {
-    if (!window.speechSynthesis) {
-      setSupported(false);
-      return;
-    }
+    narrate(text, {
+      priority: 'interrupt',
+      rate: options?.rate ?? rate,
+      volume: options?.volume ?? volume,
+      voiceName: options?.voice?.name ?? voice?.name,
+    });
+  }, [narrate, rate, volume, voice]);
 
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
+  const stop = useCallback(() => stopSpeaking(), [stopSpeaking]);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = options?.rate || rate;
-    utterance.volume = options?.volume || volume;
-    
-    if (options?.voice || voice) {
-      utterance.voice = options?.voice || voice || null;
-    }
+  const pause = useCallback(() => pauseSpeaking(), [pauseSpeaking]);
 
-    utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  }, [rate, volume, voice]);
-
-  const stop = useCallback(() => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      setSpeaking(false);
-    }
-  }, []);
-
-  const pause = useCallback(() => {
-    if (window.speechSynthesis && speaking) {
-      window.speechSynthesis.pause();
-    }
-  }, [speaking]);
-
-  const resume = useCallback(() => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.resume();
-    }
-  }, []);
+  const resume = useCallback(() => resumeSpeaking(), [resumeSpeaking]);
 
   return {
     speak,

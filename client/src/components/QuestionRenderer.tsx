@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useAccessibility } from './AccessibilityProvider';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { CodingQuestionRenderer } from './CodingQuestionRenderer';
+import type { CodeEditorVoiceActions } from './CodeEditor';
 import type { Question, MultipleChoiceOption } from '@shared/schema';
 import { Volume2, Flag, Mic, MicOff } from 'lucide-react';
 
@@ -21,6 +22,7 @@ interface QuestionRendererProps {
   isFirst?: boolean;
   isLast?: boolean;
   isFlagged?: boolean;
+  onCodeVoiceActionsReady?: (actions: CodeEditorVoiceActions | null) => void;
 }
 
 export function QuestionRenderer({
@@ -35,6 +37,7 @@ export function QuestionRenderer({
   isFirst = false,
   isLast = false,
   isFlagged = false,
+  onCodeVoiceActionsReady,
 }: QuestionRendererProps) {
   const { speak, announceToScreenReader } = useAccessibility();
   const {
@@ -304,6 +307,7 @@ export function QuestionRenderer({
             onAnswerChange={onAnswerChange}
             questionNumber={questionNumber}
             totalQuestions={totalQuestions}
+            onVoiceActionsReady={onCodeVoiceActionsReady}
           />
         )}
       </div>

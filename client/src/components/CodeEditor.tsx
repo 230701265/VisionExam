@@ -9,6 +9,11 @@ import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { Play, StopCircle, Save, RotateCcw, Terminal, CheckCircle, XCircle, Clock } from 'lucide-react';
 import type { ProgrammingLanguage, CodeExecutionResult, TestCase } from '@shared/schema';
 
+export interface CodeEditorVoiceActions {
+  runTests: () => void;
+  readTestResults: () => string;
+}
+
 interface CodeEditorProps {
   language: ProgrammingLanguage;
   initialCode?: string;
@@ -18,6 +23,7 @@ interface CodeEditorProps {
   readOnly?: boolean;
   questionId?: string;
   className?: string;
+  onVoiceActionsReady?: (actions: CodeEditorVoiceActions | null) => void;
 }
 
 const LANGUAGE_CONFIGS = {
@@ -99,7 +105,8 @@ export function CodeEditor({
   onExecute,
   readOnly = false,
   questionId,
-  className = '' 
+  className = '',
+  onVoiceActionsReady,
 }: CodeEditorProps) {
   const [code, setCode] = useState(initialCode || getDefaultCode(language));
   const [selectedLanguage, setSelectedLanguage] = useState<ProgrammingLanguage>(language);
@@ -110,6 +117,8 @@ export function CodeEditor({
   
   const { announceToScreenReader } = useAccessibility();
   const editorRef = useRef<any>(null);
+  const voiceRunRef = useRef<() => void>(() => {});
+  const voiceResultRef = useRef<() => string>(() => 'There are no coding test results yet.');
 
   // Keyboard shortcuts for the code editor
   const codeEditorShortcuts = [
@@ -211,6 +220,20 @@ export function CodeEditor({
       setIsExecuting(false);
     }
   };
+
+  voiceRunRef.current = () => void handleExecute();
+  voiceResultRef.current = () => executionResult
+    ? `Code execution completed. Status ${executionResult.status}. ${executionResult.passedTests} of ${executionResult.totalTests} tests passed.${executionResult.error ? ` Error: ${executionResult.error}` : ''}`
+    : 'There are no coding test results yet.';
+
+  useEffect(() => {
+    if (!onVoiceActionsReady) return;
+    onVoiceActionsReady({
+      runTests: () => voiceRunRef.current(),
+      readTestResults: () => voiceResultRef.current(),
+    });
+    return () => onVoiceActionsReady(null);
+  }, [onVoiceActionsReady]);
 
   const handleReset = () => {
     const defaultCode = getDefaultCode(selectedLanguage);

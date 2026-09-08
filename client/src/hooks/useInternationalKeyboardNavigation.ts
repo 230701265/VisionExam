@@ -43,15 +43,8 @@ export const useInternationalKeyboardNavigation = () => {
     }
     liveRegion.textContent = message;
     
-    // Provide audio feedback with speech synthesis
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(message);
-      utterance.rate = 1.3;
-      utterance.volume = 0.8;
-      utterance.pitch = 1.0;
-      setTimeout(() => window.speechSynthesis.speak(utterance), 100);
-    }
+    // Speech is handled by the centralized narrator in AccessibilityProvider.
+    document.dispatchEvent(new CustomEvent('opsis:narrate', { detail: { message } }));
   }, []);
 
   const jumpToLandmark = useCallback((landmark: string) => {

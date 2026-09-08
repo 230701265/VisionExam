@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CodeEditor } from './CodeEditor';
+import type { CodeEditorVoiceActions } from './CodeEditor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ interface CodingQuestionRendererProps {
   totalQuestions: number;
   isReadOnly?: boolean;
   attemptId?: string;
+  onVoiceActionsReady?: (actions: CodeEditorVoiceActions | null) => void;
 }
 
 export function CodingQuestionRenderer({
@@ -25,7 +27,8 @@ export function CodingQuestionRenderer({
   questionNumber,
   totalQuestions,
   isReadOnly = false,
-  attemptId
+  attemptId,
+  onVoiceActionsReady,
 }: CodingQuestionRendererProps) {
   const { announceToScreenReader } = useAccessibility();
   const [executionHistory, setExecutionHistory] = useState<CodeExecutionResult[]>([]);
@@ -228,6 +231,7 @@ export function CodingQuestionRenderer({
         readOnly={isReadOnly}
         questionId={question.id}
         className="mb-4"
+        onVoiceActionsReady={onVoiceActionsReady}
       />
 
       {/* Instructions for Screen Readers */}

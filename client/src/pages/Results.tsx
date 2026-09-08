@@ -1,8 +1,12 @@
+import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRoute, Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { VoiceControl } from '@/components/VoiceControl';
 import { useAccessibility } from '@/components/AccessibilityProvider';
+import { useVoiceCommands } from '@/hooks/useVoiceCommands';
+import type { ParsedVoiceCommand } from '@/voice/types';
 import type { ExamAttempt, ExamWithQuestions } from '@shared/schema';
 import { CheckCircle, XCircle, Download, ArrowLeft, Clock, Target } from 'lucide-react';
 
@@ -12,7 +16,15 @@ interface ResultsProps {
 
 export default function Results({ currentUser }: ResultsProps) {
   const [, params] = useRoute('/results/:id');
-  const { announceToScreenReader } = useAccessibility();
+  const {
+    announceToScreenReader,
+    speak,
+    settings,
+    stopSpeaking,
+    pauseSpeaking,
+    resumeSpeaking,
+    updateSettings,
+  } = useAccessibility();
 
   const attemptId = params?.id;
 
@@ -27,6 +39,68 @@ export default function Results({ currentUser }: ResultsProps) {
   });
 
   const isLoading = attemptLoading || examLoading;
+
+  const readResults = useCallback(() => {
+    if (!attempt || !exam) {
+      speak('Results are not available yet.', { priority: 'interrupt' });
+      return;
+    }
+    const percentage = attempt.score
+      ? Math.round((attempt.score / attempt.totalQuestions) * 100)
+      : 0;
+    speak(
+      `Exam results for ${exam.title}. Score ${attempt.score ?? 0} out of ${attempt.totalQuestions}, ${percentage} percent. ${percentage >= 70 ? 'Passed.' : 'Not passed.'}`,
+      { priority: 'interrupt' },
+    );
+    announceToScreenReader('Reading exam results aloud.');
+  }, [announceToScreenReader, attempt, exam, speak]);
+
+  const voiceCommandHandler = useCallback((command: ParsedVoiceCommand) => {
+    switch (command.definition.id) {
+      case 'readResults':
+      case 'readQuestion':
+      case 'repeat':
+        readResults();
+        break;
+      case 'help':
+        speak('Available commands on this page include read results, repeat, pause speech, resume speech, speak faster, and speak slower.', { priority: 'interrupt' });
+        break;
+      case 'cancel':
+        stopSpeaking();
+        announceToScreenReader('Speech cancelled.');
+        break;
+      case 'pauseSpeech':
+        pauseSpeaking();
+        break;
+      case 'resumeSpeech':
+        resumeSpeaking();
+        break;
+      case 'increaseSpeechRate':
+        updateSettings({ speechRate: Math.min(20, settings.speechRate + 1) });
+        speak('Speech rate increased.', { priority: 'interrupt' });
+        break;
+      case 'decreaseSpeechRate':
+        updateSettings({ speechRate: Math.max(5, settings.speechRate - 1) });
+        speak('Speech rate decreased.', { priority: 'interrupt' });
+        break;
+    }
+  }, [
+    announceToScreenReader,
+    pauseSpeaking,
+    readResults,
+    resumeSpeaking,
+    settings.speechRate,
+    speak,
+    stopSpeaking,
+    updateSettings,
+  ]);
+
+  const voice = useVoiceCommands({
+    scope: 'results',
+    mode: settings.voiceMode,
+    language: settings.language,
+    onCommand: voiceCommandHandler,
+  });
 
   if (isLoading) {
     return (
@@ -90,6 +164,16 @@ export default function Results({ currentUser }: ResultsProps) {
 
   return (
     <main id="main-content" role="main" className="max-w-4xl mx-auto px-6 py-8">
+      <VoiceControl
+        mode={settings.voiceMode}
+        isSupported={voice.isSupported}
+        isListening={voice.isListening}
+        interimText={voice.interimText}
+        lastTranscript={voice.lastTranscript}
+        error={voice.error}
+        onToggle={voice.toggleListening}
+        onStopSpeech={voice.stopSpeech}
+      />
       <section aria-labelledby="results-heading">
         {/* Back Navigation */}
         <div className="mb-6">

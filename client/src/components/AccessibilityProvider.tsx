@@ -1,5 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useInternationalKeyboardNavigation } from '@/hooks/useInternationalKeyboardNavigation';
+import { VoiceNarrator, type NarratorOptions } from '@/voice/narrator';
+import type { VoiceMode } from '@/voice/types';
 
 export interface AccessibilitySettings {
   fontSize: number;
@@ -48,6 +50,7 @@ export interface AccessibilitySettings {
   readingGuide: boolean;
   liveCaptions: boolean;
   voiceNavigation: boolean;
+  voiceMode: VoiceMode;
   screenReaderMode: boolean;
   wordSpacing: number;
 }
@@ -56,8 +59,10 @@ interface AccessibilityContextType {
   settings: AccessibilitySettings;
   updateSettings: (settings: Partial<AccessibilitySettings>) => void;
   announceToScreenReader: (message: string, priority?: 'polite' | 'assertive') => void;
-  speak: (text: string) => void;
+  speak: (text: string, options?: NarratorOptions) => void;
   stopSpeaking: () => void;
+  pauseSpeaking: () => void;
+  resumeSpeaking: () => void;
   isSpeaking: boolean;
   speechSupported: boolean;
   isLoading: boolean;
@@ -164,7 +169,7 @@ function ReadingGuideLine() {
 }
 
 /* ── Provider ────────────────────────────────────────────── */
-export function AccessibilityProvider({ children }: { children: ReactNode }) {
+export function AccessibilityProvider({ children, userId }: { children: ReactNode; userId?: string }) {
   useInternationalKeyboardNavigation();
 
   const getDefaultSettings = (): AccessibilitySettings => ({
@@ -213,7 +218,8 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     readingMaskHeight: 40,
     readingGuide: false,
     liveCaptions: false,
-    voiceNavigation: false,
+    voiceNavigation: true,
+    voiceMode: 'push-to-talk',
     screenReaderMode: false,
   });
 
@@ -224,6 +230,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
   const [speechSynthesisObj, setSpeechSynthesisObj] = useState<SpeechSynthesis | null>(null);
   const [ariaLiveRegion, setAriaLiveRegion] = useState<HTMLElement | null>(null);
   const [currentCaption, setCurrentCaption] = useState('');
+  const narratorRef = useRef<VoiceNarrator | null>(null);
 
   useEffect(() => {
     if ('speechSynthesis' in window) {
@@ -253,12 +260,51 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
       applyAccessibilitySettings(getDefaultSettings());
     }
 
+    if (userId) {
+      fetch(`/api/settings/${userId}`)
+        .then(response => response.ok ? response.json() : null)
+        .then(remote => {
+          if (!remote) return;
+          setSettings(previous => {
+            const merged: AccessibilitySettings = {
+              ...previous,
+              fontSize: remote.fontSize ?? previous.fontSize,
+              contrastMode: remote.contrastMode ?? previous.contrastMode,
+              speechRate: remote.speechRate ?? previous.speechRate,
+              speechVolume: remote.speechVolume ?? previous.speechVolume,
+              speechPitch: remote.speechPitch ?? previous.speechPitch,
+              speechVoice: remote.speechVoice ?? previous.speechVoice,
+              voiceMode: remote.voiceMode ?? previous.voiceMode,
+              voiceNavigation: (remote.voiceMode ?? previous.voiceMode) !== 'off',
+              audioInstructions: remote.audioInstructions ?? previous.audioInstructions,
+              soundEffects: remote.soundEffects ?? previous.soundEffects,
+              reducedMotion: remote.reducedMotion ?? previous.reducedMotion,
+            };
+            applyAccessibilitySettings(merged);
+            localStorage.setItem('opsis-accessibility-settings', JSON.stringify(merged));
+            return merged;
+          });
+        })
+        .catch(() => {
+          // Local settings remain fully functional when the server is unavailable.
+        });
+    }
+
     return () => {
       if (liveRegion && document.body.contains(liveRegion)) {
         document.body.removeChild(liveRegion);
       }
     };
-  }, []);
+  }, [userId]);
+
+  useEffect(() => {
+    narratorRef.current = new VoiceNarrator(speechSynthesisObj, (speaking, text) => {
+      setIsSpeaking(speaking);
+      if (speaking && text) setCurrentCaption(text);
+      if (!speaking) setCurrentCaption('');
+    });
+    return () => narratorRef.current?.cancel();
+  }, [speechSynthesisObj]);
 
   const applyAccessibilitySettings = (s: AccessibilitySettings) => {
     const root = document.documentElement;
@@ -302,26 +348,32 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     }
   }, [ariaLiveRegion]);
 
-  const speak = useCallback((text: string) => {
-    if (!speechSynthesisObj) return;
-    speechSynthesisObj.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = settings.speechRate / 10;
-    utt.volume = settings.speechVolume / 100;
-    utt.pitch = settings.speechPitch / 10;
-    if (settings.speechVoice) {
-      const voice = speechSynthesisObj.getVoices().find(v => v.name === settings.speechVoice);
-      if (voice) utt.voice = voice;
-    }
-    utt.onstart = () => { setIsSpeaking(true); if (settings.liveCaptions) setCurrentCaption(text); };
-    utt.onend   = () => { setIsSpeaking(false); setCurrentCaption(''); };
-    utt.onerror = () => { setIsSpeaking(false); setCurrentCaption(''); };
-    speechSynthesisObj.speak(utt);
-  }, [speechSynthesisObj, settings]);
+  const speak = useCallback((text: string, options: NarratorOptions = {}) => {
+    narratorRef.current?.speak(text, {
+      ...options,
+      rate: options.rate ?? settings.speechRate / 10,
+      volume: options.volume ?? settings.speechVolume / 100,
+      pitch: options.pitch ?? settings.speechPitch / 10,
+      voiceName: options.voiceName ?? settings.speechVoice,
+      priority: options.priority ?? 'queue',
+    });
+  }, [settings.speechPitch, settings.speechRate, settings.speechVolume, settings.speechVoice]);
+
+  useEffect(() => {
+    const handleNarrationRequest = (event: Event) => {
+      const message = (event as CustomEvent<{ message?: string }>).detail?.message;
+      if (message) speak(message, { priority: 'queue' });
+    };
+    document.addEventListener('opsis:narrate', handleNarrationRequest);
+    return () => document.removeEventListener('opsis:narrate', handleNarrationRequest);
+  }, [speak]);
 
   const stopSpeaking = useCallback(() => {
-    if (speechSynthesisObj) { speechSynthesisObj.cancel(); setIsSpeaking(false); setCurrentCaption(''); }
-  }, [speechSynthesisObj]);
+    narratorRef.current?.cancel();
+  }, []);
+
+  const pauseSpeaking = useCallback(() => narratorRef.current?.pause(), []);
+  const resumeSpeaking = useCallback(() => narratorRef.current?.resume(), []);
 
   const updateSettings = useCallback(async (newSettings: Partial<AccessibilitySettings>) => {
     setIsLoading(true);
@@ -330,6 +382,24 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
       setSettings(updated);
       applyAccessibilitySettings(updated);
       localStorage.setItem('opsis-accessibility-settings', JSON.stringify(updated));
+      if (userId) {
+        void fetch(`/api/settings/${userId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fontSize: updated.fontSize,
+            contrastMode: updated.contrastMode,
+            speechRate: updated.speechRate,
+            speechVolume: updated.speechVolume,
+            speechPitch: updated.speechPitch,
+            speechVoice: updated.speechVoice,
+            voiceMode: updated.voiceMode,
+            audioInstructions: updated.audioInstructions,
+            soundEffects: updated.soundEffects,
+            reducedMotion: updated.reducedMotion,
+          }),
+        });
+      }
       if (newSettings.contrastMode && newSettings.contrastMode !== settings.contrastMode)
         announceToScreenReader(`Contrast mode: ${newSettings.contrastMode}`);
       if (newSettings.fontSize && newSettings.fontSize !== settings.fontSize)
@@ -337,7 +407,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     } finally {
       setTimeout(() => setIsLoading(false), 250);
     }
-  }, [settings, announceToScreenReader]);
+  }, [settings, announceToScreenReader, userId]);
 
   const resetToDefaults = useCallback(() => {
     const d = getDefaultSettings();
@@ -366,7 +436,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
 
   return (
     <AccessibilityContext.Provider value={{
-      settings, updateSettings, announceToScreenReader, speak, stopSpeaking,
+      settings, updateSettings, announceToScreenReader, speak, stopSpeaking, pauseSpeaking, resumeSpeaking,
       isSpeaking, speechSupported, isLoading, currentCaption,
       resetToDefaults, exportSettings, importSettings,
     }}>

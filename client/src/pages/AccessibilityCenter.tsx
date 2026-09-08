@@ -705,9 +705,29 @@ export default function AccessibilityCenter({ currentUser: _currentUser }: Props
                     <Switch
                       id="voice-nav"
                       checked={settings.voiceNavigation}
-                      onCheckedChange={v => handleUpdate({ voiceNavigation: v })}
+                      onCheckedChange={v => handleUpdate({
+                        voiceNavigation: v,
+                        voiceMode: v ? 'push-to-talk' : 'off',
+                      })}
                       aria-label="Toggle voice navigation"
                     />
+                  </SettingRow>
+                  <SettingRow id="voice-mode" label="Voice Activation" description="Push-to-talk listens only for a short command after you press Ctrl+Shift+Space or activate the microphone button">
+                    <Select
+                      value={settings.voiceMode}
+                      onValueChange={(value) => handleUpdate({
+                        voiceMode: value as 'off' | 'push-to-talk',
+                        voiceNavigation: value !== 'off',
+                      })}
+                    >
+                      <SelectTrigger id="voice-mode" className="w-40" aria-label="Voice activation mode">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="off">Off</SelectItem>
+                        <SelectItem value="push-to-talk">Push to talk</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </SettingRow>
                   {settings.voiceNavigation && (
                     <div className="mt-2 p-3 rounded-xl bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800">

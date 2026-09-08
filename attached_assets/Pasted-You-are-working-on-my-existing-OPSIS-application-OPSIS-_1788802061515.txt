@@ -1,0 +1,1131 @@
+You are working on my existing OPSIS application.
+
+OPSIS is an accessibility-first examination platform designed especially for blind and visually impaired users. The existing application uses React on the frontend, Express on the backend, and Drizzle/PostgreSQL for persistence.
+
+I want you to ADD a complete voice accessibility layer to the EXISTING OPSIS application.
+
+IMPORTANT:
+
+* Do NOT rebuild the application from scratch.
+* Do NOT remove or break existing functionality.
+* Inspect the existing project structure, routes, components, hooks, database schema, keyboard shortcuts, examination UI, editor, timer, results system, and accessibility implementation before making changes.
+* Reuse existing functions wherever possible.
+* Voice commands must trigger the same application functions used by keyboard/buttons.
+* Keyboard and screen-reader accessibility must remain fully functional even if voice is unavailable.
+* Do not make voice the only way to perform any action.
+
+==================================================
+
+1. VOICE SYSTEM ARCHITECTURE
+   ==================================================
+
+Implement three clearly separated subsystems:
+
+A. Voice Commands
+B. Voice Guide / Narrator
+C. Conversational Voice Assistant foundation for future expansion
+
+For the first implementation, fully implement A and B.
+
+C should be architected cleanly but should NOT require an expensive external AI API unless the existing project already has one configured.
+
+The architecture should look conceptually like:
+
+Microphone
+↓
+SpeechRecognition / STT provider
+↓
+Transcript + confidence
+↓
+Command Router
+↓
+Command Registry
+↓
+Command Bus
+↓
+Existing OPSIS application functions
+
+Separately:
+
+Application events
+↓
+Narrator / TTS Queue
+↓
+SpeechSynthesis
++
+aria-live="polite" text mirror
+
+==================================================
+2. INSPECT THE EXISTING APPLICATION FIRST
+=========================================
+
+Before implementing anything:
+
+1. Identify the main examination page/component.
+2. Identify how questions are loaded.
+3. Identify how the current question index is stored.
+4. Identify how answers are selected and saved.
+5. Identify the existing Next/Previous question functions.
+6. Identify the timer implementation.
+7. Identify the code editor implementation, especially Monaco if present.
+8. Identify the Run Tests functionality.
+9. Identify the Results page and result data structure.
+10. Identify existing keyboard shortcuts.
+11. Identify existing accessibility components and aria-live regions.
+12. Identify the existing user/profile/settings database schema.
+13. Identify the existing Express API structure.
+14. Identify where audit/activity logs are stored, if available.
+
+Do not duplicate existing business logic.
+
+If an existing function such as:
+
+nextQuestion()
+selectAnswer()
+runTests()
+readResults()
+
+already exists, voice commands must call those functions instead of implementing separate versions.
+
+==================================================
+3. COMMAND BUS
+==============
+
+Create a centralized command bus.
+
+Example conceptual structure:
+
+type CommandId =
+| 'nextQuestion'
+| 'previousQuestion'
+| 'readQuestion'
+| 'readOption'
+| 'selectOption'
+| 'readTimer'
+| 'runTests'
+| 'readResults'
+| 'help'
+| 'repeat'
+| 'cancel'
+| 'increaseSpeechRate'
+| 'decreaseSpeechRate'
+| 'pauseSpeech'
+| 'resumeSpeech'
+| 'stageSubmit'
+| 'confirmSubmit';
+
+Create a CommandDef structure containing:
+
+* id
+* phrases
+* scope
+* destructive
+* handler
+* optional argument parser
+
+Example:
+
+{
+id: "nextQuestion",
+phrases: [
+"next question",
+"next",
+"go to next question",
+"skip ahead"
+],
+scope: "question",
+destructive: false,
+handler: () => existingNextQuestionFunction()
+}
+
+The Command Bus must be the single execution layer for:
+
+* keyboard commands
+* button actions where practical
+* voice commands
+
+This is extremely important.
+
+Voice should NOT become a separate parallel implementation of the application.
+
+==================================================
+4. SPEECH RECOGNITION
+=====================
+
+Implement browser SpeechRecognition first.
+
+Support:
+
+window.SpeechRecognition
+
+and:
+
+window.webkitSpeechRecognition
+
+Create a provider abstraction such as:
+
+STTEngine
+
+with methods conceptually equivalent to:
+
+start()
+stop()
+onPartial
+onFinal
+onError
+
+This allows a future provider such as Deepgram to be added without rewriting the command system.
+
+Detect unsupported browsers gracefully.
+
+If SpeechRecognition is unavailable:
+
+* show an accessible message
+* keep all keyboard functionality working
+* do not crash
+* do not repeatedly request microphone permission
+
+Recognition should primarily be used for SHORT COMMANDS.
+
+Do NOT implement code dictation.
+
+Voice should control the examination interface, not replace keyboard/braille for writing source code.
+
+==================================================
+5. PUSH-TO-TALK
+===============
+
+The default voice mode must be PUSH-TO-TALK.
+
+Use:
+
+Ctrl + Shift + Space
+
+as the default global hotkey.
+
+When activated:
+
+1. Start speech recognition.
+2. Play a short listening earcon.
+3. Announce/accessibly expose:
+   "Listening."
+4. Listen for approximately 4 seconds.
+5. Stop recognition automatically.
+6. Play a closing earcon.
+7. Process the final transcript.
+
+Do NOT continuously record microphone audio by default.
+
+This is especially important during examinations because continuous listening creates privacy and examination-integrity concerns.
+
+Make the hotkey configurable if the existing accessibility/settings architecture supports it.
+
+==================================================
+6. VOICE MODES
+==============
+
+Add an accessibility setting:
+
+voiceMode
+
+with:
+
+* off
+* push-to-talk
+* wake-word
+
+Default:
+
+push-to-talk
+
+For the first implementation, fully implement:
+
+off
+push-to-talk
+
+Wake-word should be architected as a future option but should NOT be falsely presented as implemented unless it actually works.
+
+If an admin/exam configuration system exists, add an exam-level voice mode:
+
+voiceMode: "off" | "push-to-talk" | "wake-word"
+
+This allows an administrator to disable voice for specific exams.
+
+==================================================
+7. COMMAND MATCHING
+===================
+
+Voice command recognition must be deterministic.
+
+Normalize transcripts by:
+
+* converting to lowercase
+* removing unnecessary punctuation
+* trimming whitespace
+* normalizing common speech variations
+
+Use explicit phrase/synonym matching.
+
+Examples:
+
+"next question"
+"next"
+"go to next question"
+
+→ nextQuestion
+
+"previous question"
+"go back"
+"previous"
+
+→ previousQuestion
+
+"read question"
+"read this question"
+"what is the question"
+
+→ readQuestion
+
+"read option A"
+"read answer A"
+
+→ readOption("A")
+
+"choose A"
+"select A"
+"answer A"
+
+→ selectOption("A")
+
+"read timer"
+"time remaining"
+"how much time is left"
+
+→ readTimer
+
+"run tests"
+"run the tests"
+"execute tests"
+
+→ runTests
+
+"read results"
+"show my results"
+"tell me my result"
+
+→ readResults
+
+"help"
+"what can I say"
+"voice commands"
+
+→ help
+
+"repeat"
+"say that again"
+
+→ repeat
+
+==================================================
+8. CONFIDENCE SAFETY GATE
+=========================
+
+Every recognized voice command must have a confidence value where available.
+
+Use a default confidence threshold around:
+
+0.75
+
+If confidence is below the threshold:
+
+DO NOT execute the command.
+
+Instead:
+
+1. Store the transcript temporarily.
+2. Speak:
+   "I heard: [transcript]. Please repeat."
+3. Keep the interface in a safe state.
+
+Never silently execute a potentially incorrect command during an examination.
+
+Do not use fuzzy matching or an LLM to guess destructive commands.
+
+==================================================
+9. EXAM COMMANDS
+================
+
+Implement at minimum:
+
+GLOBAL:
+
+* help
+* repeat
+* cancel
+* pause speech
+* resume speech
+* speak faster
+* speak slower
+
+QUESTION SCOPE:
+
+* next question
+* previous question
+* read question
+* read option A
+* read option B
+* read option C
+* read option D
+* select A
+* select B
+* select C
+* select D
+* read timer
+
+EDITOR SCOPE:
+
+* run tests
+* read test results
+
+RESULTS SCOPE:
+
+* read results
+
+The command registry should understand scope.
+
+For example:
+
+question commands should not execute when the user is on the results page.
+
+editor commands should not execute if the editor does not exist.
+
+==================================================
+10. SINGLE TTS NARRATOR
+=======================
+
+Create ONE centralized Narrator/TTS service.
+
+Do NOT allow individual React components to directly call:
+
+speechSynthesis.speak()
+
+All TTS should go through the narrator.
+
+The narrator must provide:
+
+speak(text, options)
+cancel()
+pause()
+resume()
+isSpeaking()
+setRate()
+setPitch()
+setVoice()
+
+Implement a queue.
+
+Support priorities such as:
+
+interrupt
+queue
+drop-if-speaking
+
+Example:
+
+Question readout:
+queue
+
+Timer warning:
+interrupt
+
+Minor status message:
+drop-if-speaking
+
+==================================================
+11. BARGE-IN
+============
+
+Barge-in is mandatory.
+
+If the user presses a key while TTS is speaking:
+
+immediately call:
+
+speechSynthesis.cancel()
+
+The user must never be trapped listening to a long question readout.
+
+Also allow the voice command:
+
+"cancel"
+
+to stop current speech.
+
+==================================================
+12. SPEECH SETTINGS
+===================
+
+Add accessible voice settings where appropriate.
+
+Allow the user to configure:
+
+* speech voice
+* speech rate
+* speech pitch
+* voice enabled/disabled
+
+Provide commands:
+
+"speak faster"
+
+"speak slower"
+
+Persist these preferences using the existing user/profile settings system if one exists.
+
+If there is no suitable existing schema, create a minimal accessibility preferences structure rather than duplicating user tables.
+
+==================================================
+13. BLIND-USER UX
+=================
+
+The voice interface must be designed primarily for blind and visually impaired users.
+
+Do NOT depend on visual indicators alone.
+
+Every important voice state should have:
+
+1. spoken feedback
+2. accessible DOM feedback
+3. appropriate ARIA state
+
+Create/use an:
+
+aria-live="polite"
+
+region that mirrors spoken announcements.
+
+Examples:
+
+Listening.
+
+Command accepted.
+
+Moving to question 7.
+
+Answer B selected.
+
+Five minutes remaining.
+
+Tests finished. Test 2 failed.
+
+Connection lost.
+
+Command not understood.
+
+==================================================
+14. DEFAULT ANNOUNCEMENT STYLE
+==============================
+
+Do NOT automatically read huge amounts of content.
+
+When moving to a question, prefer a concise announcement:
+
+"Question 7 of 20. Multiple choice. Four options."
+
+Then allow:
+
+"read question"
+
+to read the complete question.
+
+Allow:
+
+"read option A"
+
+to read a specific option.
+
+This prevents excessive narration.
+
+==================================================
+15. EARCONS
+===========
+
+Add simple non-speech audio feedback.
+
+At minimum:
+
+Listening started
+Command accepted
+Command rejected/error
+Listening stopped
+
+Use short generated/local audio where practical.
+
+Do not require an external audio service.
+
+Do not allow earcons to overlap with important speech.
+
+==================================================
+16. TIMER INTEGRATION
+=====================
+
+Integrate voice with the existing examination timer.
+
+Support:
+
+"read timer"
+
+The narrator should say something such as:
+
+"You have 18 minutes and 32 seconds remaining."
+
+Add important timer announcements such as:
+
+10 minutes remaining
+5 minutes remaining
+1 minute remaining
+
+Do not spam the user.
+
+Only announce warnings at meaningful thresholds.
+
+If the existing timer already has notification logic, reuse it.
+
+==================================================
+17. ANSWER SELECTION
+====================
+
+Voice commands must be able to select:
+
+A
+B
+C
+D
+
+But selection must use the same underlying answer-selection function as mouse/keyboard interaction.
+
+After successful selection:
+
+"Answer B selected."
+
+Do not automatically submit the answer unless the existing application already autosaves selections.
+
+If the answer is changed:
+
+"Answer changed to C."
+
+==================================================
+18. FINAL SUBMISSION SAFETY
+===========================
+
+NEVER allow a single voice command to silently submit the final examination.
+
+Instead:
+
+"submit exam"
+
+should stage the submission.
+
+Example:
+
+"Your exam is ready to submit. Say 'confirm submit' to continue."
+
+Only after:
+
+"confirm submit"
+
+should the actual final submission function execute.
+
+Alternatively, require a physical keyboard confirmation if the existing exam policy demands it.
+
+The system must prevent accidental voice submission.
+
+Log the submission-related voice actions in the audit trail.
+
+==================================================
+19. AUDIT LOG
+=============
+
+If the application already has an audit/event logging system, extend it.
+
+Record voice-executed actions such as:
+
+* timestamp
+* user/exam identifier where appropriate
+* command ID
+* recognized transcript
+* confidence if available
+* result/status
+
+Do NOT store raw microphone audio.
+
+Do NOT store unnecessary sensitive audio data.
+
+For privacy, retain only the minimum information required for examination auditing.
+
+==================================================
+20. ACCESSIBILITY
+=================
+
+Follow accessibility-first principles.
+
+Requirements:
+
+* keyboard access remains complete
+* visible controls have accessible names
+* microphone control has an accessible label
+* listening state is announced
+* errors are announced
+* focus must not unexpectedly jump
+* aria-live messages must be concise
+* voice functionality must not interfere with NVDA/VoiceOver
+* screen readers must still work if TTS is disabled
+* TTS must not be the only accessibility mechanism
+
+If Monaco Editor is used, preserve/enable its accessibility mode and DO NOT attempt code dictation in this version.
+
+==================================================
+21. CONTEXT-AWARE COMMANDS
+==========================
+
+Commands should understand the current application context.
+
+For example:
+
+Exam:
+
+* question navigation
+* answer selection
+* timer
+* read question
+
+Code Editor:
+
+* run tests
+* read test results
+
+Results:
+
+* read results
+
+Global:
+
+* help
+* repeat
+* cancel
+* speech controls
+
+The command registry should define the valid scope of each command.
+
+==================================================
+22. HELP SYSTEM
+===============
+
+Implement:
+
+"help"
+
+and:
+
+"what can I say?"
+
+The response should list only commands relevant to the current context.
+
+Example:
+
+"You can say:
+next question,
+previous question,
+read question,
+read option A,
+select A,
+read timer,
+or repeat."
+
+Do not dump 30 commands at once.
+
+==================================================
+23. REPEAT SYSTEM
+=================
+
+Maintain the last important spoken message.
+
+When the user says:
+
+"repeat"
+
+or:
+
+"say that again"
+
+repeat the last meaningful announcement.
+
+Do not repeat tiny internal status messages unless appropriate.
+
+==================================================
+24. FUTURE VOICE ASSISTANT API
+==============================
+
+Prepare the backend architecture for a future conversational assistant.
+
+If appropriate to the existing Express structure, create:
+
+POST /api/voice
+
+The endpoint should accept a small context object such as:
+
+{
+transcript,
+examId,
+questionIndex,
+questionText,
+userRole
+}
+
+However, DO NOT introduce an external LLM dependency unless necessary.
+
+If an LLM is eventually integrated, restrict it to a whitelist of safe functions such as:
+
+readQuestion
+explainOption
+getHint
+getTimeRemaining
+navigateToQuestion
+
+The LLM must never directly execute application operations.
+
+It may return an intended action, which is then validated by the Command Bus.
+
+Destructive actions must never depend on unrestricted LLM interpretation.
+
+==================================================
+25. ERROR HANDLING
+==================
+
+Handle:
+
+* microphone permission denied
+* microphone unavailable
+* SpeechRecognition unsupported
+* recognition timeout
+* no speech detected
+* low confidence
+* network recognition failure
+* browser compatibility issues
+* TTS unavailable
+* TTS interrupted
+* duplicate commands
+
+Every failure must degrade gracefully.
+
+Example:
+
+"Voice input is unavailable in this browser. Keyboard and screen-reader controls are still available."
+
+==================================================
+26. PERFORMANCE
+===============
+
+Keep command execution fast.
+
+Target:
+
+voice command → recognized intent → application action
+
+under approximately 500ms after transcript availability where practical.
+
+Do not introduce unnecessary API calls for deterministic commands.
+
+Voice commands such as:
+
+next question
+select A
+read timer
+
+must execute locally.
+
+==================================================
+27. SECURITY / EXAM INTEGRITY
+=============================
+
+Do not trust voice input as authorization.
+
+Voice must never bypass:
+
+* authentication
+* exam permissions
+* role permissions
+* server-side validation
+* submission rules
+
+The frontend Command Bus is not a security boundary.
+
+The backend must continue enforcing all existing permissions.
+
+Do not allow voice commands to expose information the current user is not already authorized to access.
+
+==================================================
+28. TESTING
+===========
+
+Add automated tests.
+
+At minimum:
+
+UNIT TESTS:
+
+* transcript normalization
+* exact command matching
+* synonym matching
+* confidence threshold
+* scope validation
+* command argument parsing
+* destructive-command confirmation
+
+Test examples:
+
+"next question" → nextQuestion
+
+"NEXT QUESTION!" → nextQuestion
+
+"go to the next question" → nextQuestion
+
+"choose b" → selectOption(B)
+
+"read option C" → readOption(C)
+
+Low confidence → no action
+
+Wrong scope → no action
+
+PLAYWRIGHT TESTS:
+
+Do NOT depend on a real microphone for automated tests.
+
+Inject fake transcripts directly into the Command Bus.
+
+Verify that:
+
+fake transcript
+→ command
+→ existing application function
+→ expected UI state
+
+Also test:
+
+* keyboard navigation still works
+* screen reader/live region behavior
+* TTS cancellation
+* timer announcements
+* staged submission
+* confirmed submission
+
+==================================================
+29. PROJECT ORGANIZATION
+========================
+
+Use the existing project conventions.
+
+If appropriate, create modules similar to:
+
+client/
+src/
+voice/
+commandRegistry.ts
+commandBus.ts
+speechRecognition.ts
+narrator.ts
+voiceTypes.ts
+voiceUtils.ts
+useVoiceCommands.ts
+
+Do not blindly create this exact structure if the existing application has a better architecture. Follow the existing conventions.
+
+Backend:
+
+server/
+routes/
+voice.ts
+
+only if the existing Express structure supports it.
+
+==================================================
+30. UI
+======
+
+Add a small accessible Voice Control interface.
+
+It should clearly show:
+
+Voice: Off
+Voice: Push-to-talk
+Listening...
+
+The UI must NOT require vision to operate.
+
+A microphone button may be provided, but keyboard and voice controls should remain available.
+
+The interface should be unobtrusive and suitable for an examination environment.
+
+Do not turn the application into a chatbot-style interface.
+
+==================================================
+31. DATABASE
+============
+
+Before modifying the database:
+
+inspect the existing Drizzle schema.
+
+If user accessibility preferences already exist, extend them.
+
+If not, add only what is necessary for:
+
+* voice enabled/mode
+* speech rate
+* speech pitch
+* selected speech voice
+
+Do not duplicate existing user preference tables.
+
+Create and apply the appropriate migration.
+
+==================================================
+32. DO NOT IMPLEMENT THESE IN V1
+================================
+
+Do NOT implement:
+
+* continuous microphone recording by default
+* raw audio storage
+* unrestricted LLM voice control
+* voice-only navigation
+* code dictation
+* voice-controlled final submission without confirmation
+* cloud STT for simple commands unless already required
+* expensive external voice APIs for basic narration
+* a generic chatbot UI
+
+==================================================
+33. DEFINITION OF DONE
+======================
+
+The implementation is complete only when:
+
+1. A blind user can activate voice using Ctrl+Shift+Space.
+2. The user can say "next question".
+3. The existing next-question functionality executes.
+4. The user can say "read question".
+5. The question is spoken through the centralized narrator.
+6. The user can say "read option B".
+7. Option B is read aloud.
+8. The user can say "select B".
+9. B is selected using the existing answer-selection logic.
+10. "read timer" reads the current timer.
+11. "run tests" uses the existing test execution logic.
+12. "read results" reads results in accessible plain language.
+13. "help" provides context-aware commands.
+14. "repeat" repeats the last meaningful announcement.
+15. A keypress interrupts speech immediately.
+16. Low-confidence commands are rejected safely.
+17. Final submission requires confirmation.
+18. Voice actions are auditable where an audit system exists.
+19. aria-live mirrors important spoken messages.
+20. Keyboard accessibility remains fully functional.
+21. Screen-reader accessibility remains fully functional.
+22. Unsupported browsers fail gracefully.
+23. No raw microphone audio is stored.
+24. Existing OPSIS functionality is not broken.
+25. Automated tests cover the Command Bus and command matching.
+
+==================================================
+34. IMPLEMENTATION PROCESS
+==========================
+
+Follow this order:
+
+PHASE 1
+Inspect the entire existing project and identify integration points.
+
+PHASE 2
+Implement:
+
+* voice types
+* command registry
+* command bus
+* transcript normalization
+* confidence gate
+
+PHASE 3
+Implement:
+
+* SpeechRecognition provider
+* push-to-talk
+* microphone state
+* error handling
+
+PHASE 4
+Implement:
+
+* centralized Narrator
+* SpeechSynthesis queue
+* priority handling
+* barge-in
+* aria-live mirror
+
+PHASE 5
+Integrate with:
+
+* question navigation
+* answer selection
+* timer
+* editor
+* test runner
+* results
+
+PHASE 6
+Implement:
+
+* voice settings
+* exam voice mode
+* submission confirmation
+* audit events
+
+PHASE 7
+Add tests.
+
+PHASE 8
+Run the existing test suite and build.
+
+Fix any regressions caused by the implementation.
+
+==================================================
+35. IMPORTANT FINAL INSTRUCTION
+===============================
+
+Before changing code, inspect the existing OPSIS codebase and explain briefly which existing components/functions you will reuse.
+
+Then implement the feature incrementally.
+
+Do not create duplicate implementations of functionality that already exists.
+
+Do not stop after creating a UI mockup.
+
+The result must be a functioning voice-control accessibility layer integrated into the real OPSIS examination workflow.
+
+After implementation, provide:
+
+1. Files created
+2. Files modified
+3. Database changes
+4. New voice commands
+5. Browser compatibility limitations
+6. Tests added
+7. Any remaining TODOs
+8. How to test the feature manually
+
+Most importantly:
+
+VOICE IS AN ADDITIONAL ACCESSIBILITY MODALITY.
+
+Keyboard + screen reader + existing OPSIS controls must remain first-class and fully functional.

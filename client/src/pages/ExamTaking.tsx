@@ -7,8 +7,11 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { QuestionRenderer } from '@/components/QuestionRenderer';
+import { VoiceControl } from '@/components/VoiceControl';
+import type { CodeEditorVoiceActions } from '@/components/CodeEditor';
 import { useAccessibility } from '@/components/AccessibilityProvider';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
+import { useVoiceCommands } from '@/hooks/useVoiceCommands';
 import { apiRequest } from '@/lib/queryClient';
 import type { ExamWithQuestions, ExamAttempt } from '@shared/schema';
 import {
@@ -24,6 +27,8 @@ interface ExamTakingProps {
 
 /* ── Auto-save status ─────────────────────── */
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type SharedExamAction = 'nextQuestion' | 'previousQuestion' | 'flagQuestion' | 'stageSubmit' | 'confirmSubmit';
+type ExamActionSource = 'voice' | 'keyboard' | 'button';
 
 /* ── Timer urgency ────────────────────────── */
 function timerColor(seconds: number, total: number): string {
@@ -45,7 +50,15 @@ function timerBg(seconds: number, total: number): string {
 export default function ExamTaking({ currentUser }: ExamTakingProps) {
   const [, params] = useRoute('/exam/:id');
   const [, setLocation] = useLocation();
-  const { announceToScreenReader, speak, settings } = useAccessibility();
+  const {
+    announceToScreenReader,
+    speak,
+    settings,
+    updateSettings,
+    stopSpeaking,
+    pauseSpeaking,
+    resumeSpeaking,
+  } = useAccessibility();
 
   /* ── Core state (PRESERVED) ─────────────── */
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -67,6 +80,10 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
 
   const examId = params?.id;
   const mainRef = useRef<HTMLDivElement>(null);
+  const codeVoiceActionsRef = useRef<CodeEditorVoiceActions | null>(null);
+  const registerCodeVoiceActions = useCallback((actions: CodeEditorVoiceActions | null) => {
+    codeVoiceActionsRef.current = actions;
+  }, []);
 
   /* ── Network status ─────────────────────── */
   useEffect(() => {
@@ -165,13 +182,19 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) { submitExamMutation.mutate(); return 0; }
-        if (prev === 300) announceToScreenReader('5 minutes remaining in the exam.');
-        if (prev === 60)  announceToScreenReader('1 minute remaining. Please finish your answers.');
+        if (prev === 300) {
+          announceToScreenReader('5 minutes remaining in the exam.');
+          speak('5 minutes remaining in the exam.', { priority: 'interrupt' });
+        }
+        if (prev === 60) {
+          announceToScreenReader('1 minute remaining. Please finish your answers.');
+          speak('1 minute remaining. Please finish your answers.', { priority: 'interrupt' });
+        }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [timeRemaining]);
+  }, [announceToScreenReader, speak, timeRemaining]);
 
   /* ── Auto-save (PRESERVED) ──────────────── */
   useEffect(() => {
@@ -242,11 +265,177 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
     submitExamMutation.mutate();
   }, [submitExamMutation, announceToScreenReader]);
 
+  const dispatchExamAction = useCallback((action: SharedExamAction, source: ExamActionSource) => {
+    const shouldSpeak = source === 'voice';
+    const question = exam?.questions[currentQuestionIndex];
+
+    switch (action) {
+      case 'nextQuestion':
+        if (exam && currentQuestionIndex < exam.questions.length - 1) {
+          nextQuestion();
+          if (shouldSpeak) speak(`Moving to question ${currentQuestionIndex + 2}.`, { priority: 'interrupt' });
+        } else if (shouldSpeak) speak('You are already on the last question.', { priority: 'interrupt' });
+        break;
+      case 'previousQuestion':
+        if (currentQuestionIndex > 0) {
+          previousQuestion();
+          if (shouldSpeak) speak(`Moving to question ${currentQuestionIndex}.`, { priority: 'interrupt' });
+        } else if (shouldSpeak) speak('You are already on the first question.', { priority: 'interrupt' });
+        break;
+      case 'flagQuestion':
+        if (shouldSpeak) {
+          speak(
+            flaggedQuestions.has(question?.id ?? '') ? 'Question unflagged.' : 'Question flagged for review.',
+            { priority: 'interrupt' },
+          );
+        }
+        flagQuestion();
+        break;
+      case 'stageSubmit':
+        handleSubmitExam();
+        if (shouldSpeak) {
+          speak('Submission is ready. Say confirm submit to submit your exam, or cancel to continue.', { priority: 'interrupt' });
+        }
+        break;
+      case 'confirmSubmit':
+        if (showSubmitDialog) confirmSubmit();
+        else if (shouldSpeak) speak('No submission is waiting for confirmation. Say submit exam first.', { priority: 'interrupt' });
+        break;
+    }
+  }, [
+    confirmSubmit,
+    currentQuestionIndex,
+    exam,
+    flaggedQuestions,
+    flagQuestion,
+    handleSubmitExam,
+    nextQuestion,
+    previousQuestion,
+    showSubmitDialog,
+    speak,
+  ]);
+
+  const voiceCommandHandler = useCallback((command: import('@/voice/types').ParsedVoiceCommand) => {
+    const question = exam?.questions[currentQuestionIndex];
+    const answerOptions = Array.isArray(question?.options)
+      ? question.options as Array<{ id: string; text: string }>
+      : [];
+
+    switch (command.definition.id) {
+      case 'nextQuestion':
+        dispatchExamAction('nextQuestion', 'voice');
+        break;
+      case 'previousQuestion':
+        dispatchExamAction('previousQuestion', 'voice');
+        break;
+      case 'readQuestion':
+        if (question) {
+          const message = `Question ${currentQuestionIndex + 1}: ${question.text}`;
+          speak(message, { priority: 'interrupt' });
+          announceToScreenReader('Reading question aloud');
+        }
+        break;
+      case 'readOption': {
+        const option = answerOptions.find(item => item.id.toLowerCase() === command.argument?.toLowerCase());
+        if (option) speak(`Option ${option.id.toUpperCase()}: ${option.text}`, { priority: 'interrupt' });
+        else speak(`Option ${command.argument ?? ''} is not available for this question.`, { priority: 'interrupt' });
+        break;
+      }
+      case 'selectOption': {
+        const option = answerOptions.find(item => item.id.toLowerCase() === command.argument?.toLowerCase());
+        if (option) {
+          handleAnswerChange(option.id);
+          speak(`Option ${option.id.toUpperCase()} selected.`, { priority: 'interrupt' });
+        } else if (question?.type === 'true_false' && ['TRUE', 'FALSE'].includes(command.argument ?? '')) {
+          handleAnswerChange(command.argument!.toLowerCase());
+          speak(`${command.argument} selected.`, { priority: 'interrupt' });
+        } else {
+          speak(`Option ${command.argument ?? ''} is not available for this question.`, { priority: 'interrupt' });
+        }
+        break;
+      }
+      case 'readTimer': {
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        speak(`Time remaining: ${minutes} minutes and ${seconds} seconds.`, { priority: 'interrupt' });
+        break;
+      }
+      case 'flagQuestion':
+        dispatchExamAction('flagQuestion', 'voice');
+        break;
+      case 'runTests': {
+        if (codeVoiceActionsRef.current) {
+          codeVoiceActionsRef.current.runTests();
+          speak('Running the coding tests.', { priority: 'interrupt' });
+        }
+        else speak('Run tests is only available for a coding question.', { priority: 'interrupt' });
+        break;
+      }
+      case 'readTestResults': {
+        speak(codeVoiceActionsRef.current?.readTestResults() ?? 'There are no coding test results yet.', { priority: 'interrupt' });
+        break;
+      }
+      case 'help':
+        setShowHelpDialog(true);
+        speak('Available commands include next question, previous question, read question, read option A, select option A, read timer, run tests, submit exam, and repeat.', { priority: 'interrupt' });
+        break;
+      case 'repeat':
+        speak(lastAction || (question ? `Question ${currentQuestionIndex + 1}: ${question.text}` : 'There is nothing to repeat yet.'), { priority: 'interrupt' });
+        break;
+      case 'cancel':
+        setShowSubmitDialog(false);
+        stopSpeaking();
+        announceToScreenReader('Voice action cancelled.');
+        break;
+      case 'pauseSpeech':
+        pauseSpeaking();
+        break;
+      case 'resumeSpeech':
+        resumeSpeaking();
+        break;
+      case 'increaseSpeechRate':
+        updateSettings({ speechRate: Math.min(20, settings.speechRate + 1) });
+        speak('Speech rate increased.', { priority: 'interrupt' });
+        break;
+      case 'decreaseSpeechRate':
+        updateSettings({ speechRate: Math.max(5, settings.speechRate - 1) });
+        speak('Speech rate decreased.', { priority: 'interrupt' });
+        break;
+      case 'stageSubmit':
+        dispatchExamAction('stageSubmit', 'voice');
+        break;
+      case 'confirmSubmit':
+        dispatchExamAction('confirmSubmit', 'voice');
+        break;
+    }
+  }, [
+    announceToScreenReader,
+    currentQuestionIndex,
+    dispatchExamAction,
+    exam,
+    handleAnswerChange,
+    lastAction,
+    pauseSpeaking,
+    resumeSpeaking,
+    settings.speechRate,
+    speak,
+    stopSpeaking,
+    timeRemaining,
+    updateSettings,
+  ]);
+
+  const voice = useVoiceCommands({
+    scope: 'question',
+    mode: settings.voiceMode,
+    language: settings.language,
+    onCommand: voiceCommandHandler,
+  });
+
   /* ── Keyboard shortcuts (PRESERVED) ─────── */
   const shortcuts = [
-    { key: 'n', altKey: true, action: nextQuestion,     description: 'Next question (Alt+N)' },
-    { key: 'p', altKey: true, action: previousQuestion, description: 'Previous question (Alt+P)' },
-    { key: 'f', altKey: true, action: flagQuestion,     description: 'Flag/unflag question (Alt+F)' },
+    { key: 'n', altKey: true, action: () => dispatchExamAction('nextQuestion', 'keyboard'), description: 'Next question (Alt+N)' },
+    { key: 'p', altKey: true, action: () => dispatchExamAction('previousQuestion', 'keyboard'), description: 'Previous question (Alt+P)' },
+    { key: 'f', altKey: true, action: () => dispatchExamAction('flagQuestion', 'keyboard'), description: 'Flag/unflag question (Alt+F)' },
     { key: 'r', altKey: true, action: () => {
         const qText = exam ? `Question ${currentQuestionIndex + 1}: ${exam.questions[currentQuestionIndex].text}` : '';
         if (qText) { speak(qText); setLastAction('Reading question'); }
@@ -309,6 +498,16 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F0F4F9] dark:bg-gray-950" role="application" aria-label="Examination interface">
+      <VoiceControl
+        mode={settings.voiceMode}
+        isSupported={voice.isSupported}
+        isListening={voice.isListening}
+        interimText={voice.interimText}
+        lastTranscript={voice.lastTranscript}
+        error={voice.error}
+        onToggle={voice.toggleListening}
+        onStopSpeech={voice.stopSpeech}
+      />
 
       {/* ═══════════════════════════════════════
           STICKY HEADER
@@ -545,7 +744,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
               {/* Sidebar submit */}
               <div className="p-4 border-t border-gray-100 dark:border-gray-800">
                 <Button
-                  onClick={handleSubmitExam}
+                  onClick={() => dispatchExamAction('stageSubmit', 'button')}
                   className="w-full gap-2 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
                   disabled={submitExamMutation.isPending}
                   data-testid="button-submit-exam"
@@ -623,9 +822,10 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
                   totalQuestions={exam.questions.length}
                   answer={answers[currentQuestion.id] || ''}
                   onAnswerChange={handleAnswerChange}
-                  onNext={currentQuestionIndex < exam.questions.length - 1 ? nextQuestion : undefined}
-                  onPrevious={currentQuestionIndex > 0 ? previousQuestion : undefined}
-                  onFlag={flagQuestion}
+                  onNext={currentQuestionIndex < exam.questions.length - 1 ? () => dispatchExamAction('nextQuestion', 'button') : undefined}
+                  onPrevious={currentQuestionIndex > 0 ? () => dispatchExamAction('previousQuestion', 'button') : undefined}
+                  onFlag={() => dispatchExamAction('flagQuestion', 'button')}
+                  onCodeVoiceActionsReady={registerCodeVoiceActions}
                   isFirst={currentQuestionIndex === 0}
                   isLast={currentQuestionIndex === exam.questions.length - 1}
                   isFlagged={isFlagged}
@@ -668,7 +868,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
           <Button
             variant="outline"
             className="flex-1 sm:flex-none sm:min-w-[160px] h-12 gap-2 font-semibold text-sm border-2 hover:border-primary/50 hover:bg-primary/5 transition-all"
-            onClick={previousQuestion}
+            onClick={() => dispatchExamAction('previousQuestion', 'button')}
             disabled={currentQuestionIndex === 0}
             aria-label="Previous question (Alt+P)"
             data-testid="button-prev-question"
@@ -683,7 +883,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
               variant={isFlagged ? 'default' : 'outline'}
               size="sm"
               className={`h-10 px-3 gap-1.5 text-xs font-medium transition-all ${isFlagged ? 'bg-amber-500 hover:bg-amber-600 border-amber-500 text-white' : 'border-2 hover:border-amber-400 hover:text-amber-600'}`}
-              onClick={flagQuestion}
+              onClick={() => dispatchExamAction('flagQuestion', 'button')}
               aria-pressed={isFlagged}
               aria-label={`${isFlagged ? 'Unflag' : 'Flag'} question for review (Alt+F)`}
               data-testid="button-flag-question"
@@ -718,7 +918,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
           {currentQuestionIndex < exam.questions.length - 1 ? (
             <Button
               className="flex-1 sm:flex-none sm:min-w-[160px] h-12 gap-2 font-semibold text-sm shadow-sm shadow-primary/20 transition-all"
-              onClick={nextQuestion}
+              onClick={() => dispatchExamAction('nextQuestion', 'button')}
               aria-label="Next question (Alt+N)"
               data-testid="button-next-question"
             >
@@ -728,7 +928,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
           ) : (
             <Button
               className="flex-1 sm:flex-none sm:min-w-[160px] h-12 gap-2 font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/30 transition-all"
-              onClick={handleSubmitExam}
+              onClick={() => dispatchExamAction('stageSubmit', 'button')}
               disabled={submitExamMutation.isPending}
               aria-label="Submit exam"
               data-testid="button-submit-exam"
@@ -809,7 +1009,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
               Continue Exam
             </Button>
             <Button
-              onClick={confirmSubmit}
+              onClick={() => dispatchExamAction('confirmSubmit', 'button')}
               disabled={submitExamMutation.isPending}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-2"
               data-testid="button-confirm-submit"
@@ -847,6 +1047,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
               { keys: ['Alt', 'R'], label: 'Read question aloud' },
               { keys: ['Alt', 'H'], label: 'Open this help dialog' },
               { keys: ['Ctrl', 'M'], label: 'Toggle voice input (short answer)' },
+              { keys: ['Ctrl', 'Shift', 'Space'], label: 'Start or stop a voice command' },
               { keys: ['Tab'], label: 'Move to next element' },
               { keys: ['Enter', 'Space'], label: 'Activate buttons & select answers' },
             ].map(s => (
