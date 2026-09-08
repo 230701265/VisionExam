@@ -39,6 +39,7 @@ export interface IStorage {
   getExamAttempt(id: string): Promise<ExamAttempt | undefined>;
   getExamAttemptsByUser(userId: string): Promise<ExamAttemptWithDetails[]>;
   getExamAttemptsByExam(examId: string): Promise<ExamAttemptWithDetails[]>;
+  getAllExamAttempts(): Promise<ExamAttempt[]>;
   createExamAttempt(attempt: InsertExamAttempt): Promise<ExamAttempt>;
   updateExamAttempt(id: string, attempt: Partial<ExamAttempt>): Promise<ExamAttempt | undefined>;
 
@@ -46,6 +47,7 @@ export interface IStorage {
   createCodeSubmission(submission: InsertCodeSubmission): Promise<CodeSubmission>;
   getCodeSubmissionsByAttempt(attemptId: string): Promise<CodeSubmission[]>;
   getCodeSubmissionsByQuestion(questionId: string): Promise<CodeSubmission[]>;
+  getAllCodeSubmissions(): Promise<CodeSubmission[]>;
 
   // User settings operations
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
@@ -427,6 +429,10 @@ print(find_max([1, 3, 2, 8, 5]))  # Should output 8`,
     );
   }
 
+  async getAllExamAttempts(): Promise<ExamAttempt[]> {
+    return Array.from(this.examAttempts.values());
+  }
+
   async createExamAttempt(insertAttempt: InsertExamAttempt): Promise<ExamAttempt> {
     const id = randomUUID();
     const attempt: ExamAttempt = { 
@@ -434,10 +440,12 @@ print(find_max([1, 3, 2, 8, 5]))  # Should output 8`,
       id,
       startedAt: new Date(),
       completedAt: insertAttempt.completedAt || null,
-      score: insertAttempt.score || null,
-      correctAnswers: insertAttempt.correctAnswers || null,
-      timeSpent: insertAttempt.timeSpent || null,
-      codeExecutions: insertAttempt.codeExecutions || null
+      score: insertAttempt.score ?? null,
+      correctAnswers: insertAttempt.correctAnswers ?? null,
+      timeSpent: insertAttempt.timeSpent ?? null,
+      codeExecutions: insertAttempt.codeExecutions || null,
+      graded: insertAttempt.graded ?? false,
+      teacherFeedback: insertAttempt.teacherFeedback || null,
     };
     this.examAttempts.set(id, attempt);
     return attempt;
@@ -466,6 +474,10 @@ print(find_max([1, 3, 2, 8, 5]))  # Should output 8`,
     // codeSubmissions map should already be initialized in constructor
     this.codeSubmissions.set(id, submission);
     return submission;
+  }
+
+  async getAllCodeSubmissions(): Promise<CodeSubmission[]> {
+    return Array.from(this.codeSubmissions.values());
   }
 
   async getCodeSubmissionsByAttempt(attemptId: string): Promise<CodeSubmission[]> {

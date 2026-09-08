@@ -139,10 +139,7 @@ export function CodingQuestionRenderer({
         <CardContent>
           {/* Question Text */}
           <div className="prose dark:prose-invert max-w-none mb-6">
-            <div 
-              className="text-base leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: question.text.replace(/\n/g, '<br/>') }}
-            />
+            <div className="whitespace-pre-wrap text-base leading-relaxed">{question.text}</div>
           </div>
 
           {/* Constraints */}

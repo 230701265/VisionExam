@@ -7,13 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiRequest } from '@/lib/queryClient';
 import { useAccessibility } from '@/components/AccessibilityProvider';
 import { useToast } from '@/hooks/use-toast';
-import type { Exam, Question, MultipleChoiceOption } from '@shared/schema';
+import type { Exam, Question, MultipleChoiceOption, TestCase } from '@shared/schema';
 import { Plus, Edit, Trash2, FileText, Clock, Users } from 'lucide-react';
 
 const examSchema = z.object({
@@ -22,20 +22,69 @@ const examSchema = z.object({
   duration: z.number().min(1, 'Duration must be at least 1 minute'),
 });
 
+const codingLanguages = ['javascript', 'typescript', 'python'] as const;
+
 const questionSchema = z.object({
-  type: z.enum(['multiple_choice', 'short_answer', 'true_false']),
+  type: z.enum(['multiple_choice', 'short_answer', 'true_false', 'coding']),
   text: z.string().min(1, 'Question text is required'),
   options: z.array(z.object({
     id: z.string(),
     text: z.string(),
   })).optional(),
-  correctAnswer: z.string().min(1, 'Correct answer is required'),
+  correctAnswer: z.string().optional(),
   points: z.number().min(1, 'Points must be at least 1'),
   order: z.number().min(1, 'Order must be at least 1'),
+  language: z.enum(codingLanguages).optional(),
+  starterCode: z.string().optional(),
+  testCases: z.array(z.object({
+    id: z.string().min(1),
+    input: z.string(),
+    expectedOutput: z.string(),
+    description: z.string().optional(),
+    isHidden: z.boolean().optional(),
+  })).optional(),
+  timeLimit: z.number().min(1, 'Time limit must be at least 1 second').optional(),
+  memoryLimit: z.number().min(16, 'Memory limit must be at least 16 MB').optional(),
+}).superRefine((value, ctx) => {
+  if (value.type !== 'coding' && !value.correctAnswer?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['correctAnswer'], message: 'Correct answer is required' });
+  }
+  if (value.type === 'coding') {
+    if (!value.language) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['language'], message: 'Programming language is required' });
+    if (value.starterCode === undefined || !value.starterCode.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['starterCode'], message: 'Starter code is required' });
+    }
+    if (!value.timeLimit) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['timeLimit'], message: 'Time limit is required' });
+    if (!value.memoryLimit) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['memoryLimit'], message: 'Memory limit is required' });
+    if (!value.testCases?.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['testCases'], message: 'Add at least one test case' });
+    } else {
+      value.testCases.forEach((testCase, index) => {
+        if (!testCase.expectedOutput.trim()) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['testCases', index, 'expectedOutput'], message: 'Expected output is required' });
+        }
+      });
+    }
+  }
 });
 
 type ExamForm = z.infer<typeof examSchema>;
 type QuestionForm = z.infer<typeof questionSchema>;
+
+function questionPayload(data: QuestionForm) {
+  if (data.type === 'coding') {
+    return { ...data, options: null, correctAnswer: null };
+  }
+  return {
+    ...data,
+    options: data.type === 'multiple_choice' ? data.options : null,
+    language: null,
+    starterCode: null,
+    testCases: null,
+    timeLimit: null,
+    memoryLimit: null,
+  };
+}
 
 interface ExamManagementProps {
   currentUser: { id: string; username: string; role: string };
@@ -80,8 +129,14 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
       correctAnswer: '',
       points: 1,
       order: 1,
+      language: 'javascript',
+      starterCode: '',
+      testCases: [{ id: `test-${Date.now()}`, input: '', expectedOutput: '', description: '', isHidden: false }],
+      timeLimit: 2,
+      memoryLimit: 128,
     },
   });
+  const testCaseFields = useFieldArray({ control: questionForm.control, name: 'testCases' });
 
   const createExamMutation = useMutation({
     mutationFn: async (data: ExamForm) => {
@@ -123,7 +178,7 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
       if (!selectedExam) throw new Error('No exam selected');
       
       const response = await apiRequest('POST', `/api/exams/${selectedExam.id}/questions`, {
-        ...data,
+        ...questionPayload(data),
         order: questions.length + 1,
       });
       return response.json();
@@ -142,7 +197,7 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
     mutationFn: async (data: QuestionForm) => {
       if (!editingQuestion) throw new Error('No question to update');
       
-      const response = await apiRequest('PUT', `/api/questions/${editingQuestion.id}`, data);
+      const response = await apiRequest('PUT', `/api/questions/${editingQuestion.id}`, questionPayload(data));
       return response.json();
     },
     onSuccess: () => {
@@ -201,6 +256,19 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
       correctAnswer: question.correctAnswer || '',
       points: question.points,
       order: question.order,
+      language: codingLanguages.includes(question.language as typeof codingLanguages[number])
+        ? question.language as typeof codingLanguages[number]
+        : 'javascript',
+      starterCode: question.starterCode || '',
+      testCases: ((question.testCases as TestCase[] | null) || []).map((testCase, index) => ({
+        id: testCase.id || `test-${question.id}-${index}`,
+        input: testCase.input || '',
+        expectedOutput: testCase.expectedOutput || '',
+        description: testCase.description || '',
+        isHidden: Boolean(testCase.isHidden),
+      })),
+      timeLimit: question.timeLimit || 2,
+      memoryLimit: question.memoryLimit || 128,
     });
     setShowQuestionDialog(true);
   };
@@ -412,7 +480,7 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                         Add Question
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>
                           {editingQuestion ? 'Edit Question' : 'Add New Question'}
@@ -441,6 +509,7 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                               <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
                               <SelectItem value="short_answer">Short Answer</SelectItem>
                               <SelectItem value="true_false">True/False</SelectItem>
+                              <SelectItem value="coding">Coding</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -484,7 +553,87 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                           </div>
                         )}
 
-                        <div>
+                        {watchQuestionType === 'coding' && (
+                          <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4" aria-labelledby="coding-settings-heading">
+                            <div>
+                              <h4 id="coding-settings-heading" className="font-semibold">Coding settings</h4>
+                              <p className="text-sm text-muted-foreground">Define the executable environment and every case used to grade the solution.</p>
+                            </div>
+                            <div>
+                              <Label htmlFor="coding-language">Programming language</Label>
+                              <Select
+                                value={questionForm.watch('language') || ''}
+                                onValueChange={(value) => questionForm.setValue('language', value as QuestionForm['language'], { shouldValidate: true })}
+                              >
+                                <SelectTrigger id="coding-language" data-testid="select-coding-language">
+                                  <SelectValue placeholder="Select a language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="javascript">JavaScript</SelectItem>
+                                  <SelectItem value="typescript">TypeScript</SelectItem>
+                                  <SelectItem value="python">Python</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {questionForm.formState.errors.language && <p role="alert" className="text-sm text-red-600 mt-1">{questionForm.formState.errors.language.message}</p>}
+                            </div>
+                            <div>
+                              <Label htmlFor="starter-code">Starter code</Label>
+                              <Textarea id="starter-code" {...questionForm.register('starterCode')} rows={6} className="font-mono text-sm" placeholder="Provide the code students will begin with." data-testid="textarea-starter-code" />
+                              {questionForm.formState.errors.starterCode && <p role="alert" className="text-sm text-red-600 mt-1">{questionForm.formState.errors.starterCode.message}</p>}
+                            </div>
+                            <div className="grid sm:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="time-limit">Time limit (seconds)</Label>
+                                <Input id="time-limit" type="number" min="1" {...questionForm.register('timeLimit', { valueAsNumber: true })} data-testid="input-time-limit" />
+                                {questionForm.formState.errors.timeLimit && <p role="alert" className="text-sm text-red-600 mt-1">{questionForm.formState.errors.timeLimit.message}</p>}
+                              </div>
+                              <div>
+                                <Label htmlFor="memory-limit">Memory limit (MB)</Label>
+                                <Input id="memory-limit" type="number" min="16" {...questionForm.register('memoryLimit', { valueAsNumber: true })} data-testid="input-memory-limit" />
+                                {questionForm.formState.errors.memoryLimit && <p role="alert" className="text-sm text-red-600 mt-1">{questionForm.formState.errors.memoryLimit.message}</p>}
+                              </div>
+                            </div>
+                            <fieldset className="space-y-3">
+                              <legend className="text-base font-medium">Test cases</legend>
+                              <p className="text-sm text-muted-foreground">Each case needs input and expected output. Hidden cases are not shown to students.</p>
+                              {testCaseFields.fields.map((field, index) => (
+                                <div key={field.id} className="rounded-md border bg-background p-3 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="font-medium">Test case {index + 1}</h5>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => testCaseFields.remove(index)} disabled={testCaseFields.fields.length === 1} aria-label={`Remove test case ${index + 1}`}>
+                                      <Trash2 className="h-3 w-3 mr-1" /> Remove
+                                    </Button>
+                                  </div>
+                                  <div className="grid md:grid-cols-2 gap-3">
+                                    <div>
+                                      <Label htmlFor={`test-case-${index}-input`}>Input</Label>
+                                      <Textarea id={`test-case-${index}-input`} {...questionForm.register(`testCases.${index}.input` as const)} rows={3} className="font-mono text-sm" data-testid={`textarea-test-input-${index}`} />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor={`test-case-${index}-output`}>Expected output</Label>
+                                      <Textarea id={`test-case-${index}-output`} {...questionForm.register(`testCases.${index}.expectedOutput` as const)} rows={3} className="font-mono text-sm" data-testid={`textarea-test-output-${index}`} />
+                                      {questionForm.formState.errors.testCases?.[index]?.expectedOutput && <p role="alert" className="text-sm text-red-600 mt-1">{questionForm.formState.errors.testCases[index]?.expectedOutput?.message}</p>}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`test-case-${index}-description`}>Description (optional)</Label>
+                                    <Input id={`test-case-${index}-description`} {...questionForm.register(`testCases.${index}.description` as const)} data-testid={`input-test-description-${index}`} />
+                                  </div>
+                                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <input type="checkbox" {...questionForm.register(`testCases.${index}.isHidden` as const)} className="h-4 w-4" data-testid={`checkbox-test-hidden-${index}`} />
+                                    Hidden test case
+                                  </label>
+                                </div>
+                              ))}
+                              {questionForm.formState.errors.testCases?.message && <p role="alert" className="text-sm text-red-600">{questionForm.formState.errors.testCases.message}</p>}
+                              <Button type="button" variant="outline" onClick={() => testCaseFields.append({ id: `test-${Date.now()}-${testCaseFields.fields.length}`, input: '', expectedOutput: '', description: '', isHidden: false })}>
+                                <Plus className="h-4 w-4 mr-2" /> Add test case
+                              </Button>
+                            </fieldset>
+                          </div>
+                        )}
+
+                        {watchQuestionType !== 'coding' && <div>
                           <Label htmlFor="correct-answer" className="text-base font-medium">
                             Correct Answer
                           </Label>
@@ -539,7 +688,7 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                               {questionForm.formState.errors.correctAnswer.message}
                             </p>
                           )}
-                        </div>
+                        </div>}
 
                         <div>
                           <Label htmlFor="question-points" className="text-base font-medium">
@@ -621,9 +770,17 @@ export default function ExamManagement({ currentUser }: ExamManagementProps) {
                                   ))}
                                 </div>
                               )}
-                              <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                                <strong>Correct:</strong> {question.correctAnswer}
-                              </p>
+                              {question.type === 'coding' && (
+                                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                  <p><strong>Language:</strong> {question.language === 'javascript' ? 'JavaScript' : question.language === 'typescript' ? 'TypeScript' : 'Python'}</p>
+                                  <p><strong>Tests:</strong> {Array.isArray(question.testCases) ? question.testCases.length : 0} · <strong>Limits:</strong> {question.timeLimit ?? '—'}s / {question.memoryLimit ?? '—'}MB</p>
+                                </div>
+                              )}
+                              {question.type !== 'coding' && (
+                                <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                                  <strong>Correct:</strong> {question.correctAnswer}
+                                </p>
+                              )}
                             </div>
                             <div className="flex gap-2 ml-4">
                               <Button

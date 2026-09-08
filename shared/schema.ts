@@ -49,6 +49,8 @@ export const examAttempts = pgTable("exam_attempts", {
   answers: jsonb("answers").notNull(), // questionId -> answer/code mapping
   timeSpent: integer("time_spent"), // in minutes
   codeExecutions: jsonb("code_executions"), // execution history and results
+  graded: boolean("graded").notNull().default(false),
+  teacherFeedback: text("teacher_feedback"),
 });
 
 // New table for coding submissions

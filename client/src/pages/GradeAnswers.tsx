@@ -34,11 +34,11 @@ export default function GradeAnswers({ currentUser }: GradeAnswersProps) {
   });
 
   const submitGradeMutation = useMutation({
-    mutationFn: async (data: { attemptId: string; finalScore: number; feedback: string }) => {
+    mutationFn: async (data: { attemptId: string; questionGrades: typeof grading; feedback: string }) => {
       const response = await apiRequest('PUT', `/api/attempts/${data.attemptId}`, {
-        score: data.finalScore,
         graded: true,
         teacherFeedback: data.feedback,
+        questionGrades: data.questionGrades,
       });
       return response.json();
     },
@@ -62,14 +62,19 @@ export default function GradeAnswers({ currentUser }: GradeAnswersProps) {
   const handleSubmitGrades = () => {
     if (!selectedAttempt) return;
 
-    const totalScore = Object.values(grading).reduce((sum, grade) => sum + grade.score, 0);
-    const overallFeedback = Object.entries(grading)
+    const completeGrades = Object.fromEntries(
+      getShortAnswerQuestions().map(question => [
+        question.id,
+        grading[question.id] ?? { score: 0, feedback: '' },
+      ]),
+    );
+    const overallFeedback = Object.entries(completeGrades)
       .map(([qId, grade]) => `Question: ${grade.feedback}`)
       .join('\n');
 
     submitGradeMutation.mutate({
       attemptId: selectedAttempt.id,
-      finalScore: totalScore,
+      questionGrades: completeGrades,
       feedback: overallFeedback,
     });
   };
@@ -123,7 +128,7 @@ export default function GradeAnswers({ currentUser }: GradeAnswersProps) {
             ) : (
               <div className="space-y-3">
                 {attempts
-                  .filter(attempt => attempt.completedAt && !attempt.score) // Completed but not graded
+                  .filter(attempt => attempt.completedAt && !attempt.graded)
                   .map((attempt) => (
                     <Card
                       key={attempt.id}
