@@ -10,8 +10,7 @@ import { QuestionRenderer } from '@/components/QuestionRenderer';
 import { VoiceControl } from '@/components/VoiceControl';
 import type { CodeEditorVoiceActions } from '@/components/CodeEditor';
 import { useAccessibility } from '@/components/AccessibilityProvider';
-import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
-import { useVoiceCommands } from '@/hooks/useVoiceCommands';
+import { useOPSISAssist } from '@/hooks/useOPSISAssist';
 import { apiRequest } from '@/lib/queryClient';
 import type { ExamWithQuestions, ExamAttempt } from '@shared/schema';
 import {
@@ -76,7 +75,6 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
   const [showNav, setShowNav] = useState(true);
   const [direction, setDirection] = useState<1 | -1>(1); // for slide animation
   const [lastAction, setLastAction] = useState<string>('');
-  const [voiceActive, setVoiceActive] = useState(false);
 
   const examId = params?.id;
   const mainRef = useRef<HTMLDivElement>(null);
@@ -93,16 +91,6 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
     window.addEventListener('offline', onOffline);
     return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); };
   }, [announceToScreenReader]);
-
-  /* ── Voice mic status (observes DOM) ────── */
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const micBtn = document.querySelector('[data-testid="button-voice-input"]');
-      setVoiceActive(micBtn?.classList.contains('bg-red-500') ?? false);
-    });
-    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
 
   /* ── Exam data query (PRESERVED) ────────── */
   const { data: exam, isLoading: examLoading } = useQuery<ExamWithQuestions>({
@@ -415,30 +403,18 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
     updateSettings,
   ]);
 
-  const voice = useVoiceCommands({
-    scope: 'question',
-    mode: settings.voiceMode,
-    language: settings.language,
-    onCommand: voiceCommandHandler,
-  });
-
   /* ── Keyboard shortcuts (PRESERVED) ─────── */
-  const shortcuts = [
-    { key: 'n', altKey: true, action: () => dispatchExamAction('nextQuestion', 'keyboard'), description: 'Next question (Alt+N)' },
-    { key: 'p', altKey: true, action: () => dispatchExamAction('previousQuestion', 'keyboard'), description: 'Previous question (Alt+P)' },
-    { key: 'f', altKey: true, action: () => dispatchExamAction('flagQuestion', 'keyboard'), description: 'Flag/unflag question (Alt+F)' },
-    { key: 'r', altKey: true, action: () => {
+  const shortcuts = {
+    next: { key: 'n', altKey: true, action: () => dispatchExamAction('nextQuestion', 'keyboard') },
+    previous: { key: 'p', altKey: true, action: () => dispatchExamAction('previousQuestion', 'keyboard') },
+    flag: { key: 'f', altKey: true, action: () => dispatchExamAction('flagQuestion', 'keyboard') },
+    read: { key: 'r', altKey: true, action: () => {
         const qText = exam ? `Question ${currentQuestionIndex + 1}: ${exam.questions[currentQuestionIndex].text}` : '';
         if (qText) { speak(qText); setLastAction('Reading question'); }
-      }, description: 'Read question (Alt+R)' },
-    { key: 'h', altKey: true, action: () => setShowHelpDialog(true), description: 'Help (Alt+H)' },
-    { key: 'm', ctrlKey: true, action: () => {
-        const btn = document.querySelector('[data-testid="button-voice-input"]') as HTMLButtonElement;
-        if (btn) { btn.click(); announceToScreenReader('Voice input toggled'); }
-        else announceToScreenReader('Voice input not available for this question type');
-      }, description: 'Toggle voice input (Ctrl+M)' },
-  ];
-  useKeyboardNavigation(shortcuts);
+      } },
+    help: { key: 'h', altKey: true, action: () => setShowHelpDialog(true) },
+  };
+  const voice = useOPSISAssist('question', voiceCommandHandler, shortcuts);
 
   /* ── Format time ────────────────────────── */
   const formatTime = (seconds: number) => {
@@ -498,6 +474,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
         error={voice.error}
         onToggle={voice.toggleListening}
         onStopSpeech={voice.stopSpeech}
+        assistEnabled={voice.assistEnabled}
       />
 
       {/* ═══════════════════════════════════════
@@ -585,7 +562,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
             </div>
 
             {/* Voice status */}
-            {voiceActive && (
+            {voice.isListening && (
               <motion.div
                 initial={{ scale: 0 }} animate={{ scale: 1 }}
                 className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-900/50 border border-red-500/40"

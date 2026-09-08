@@ -34,48 +34,42 @@ export function InternationalKeyboardHelp() {
 
   const shortcutCategories = [
     {
-      title: "International Navigation Standards",
+      title: "OPSIS Assist Navigation",
       key: "international",
       badge: "WCAG 2.1",
       shortcuts: [
-        { key: "Alt + ↓ (Option + ↓ on Mac)", description: "Next interactive element (buttons, links, inputs) - Universal standard" },
-        { key: "Alt + ↑ (Option + ↑ on Mac)", description: "Previous interactive element - Reverse navigation" },
-        { key: "Alt + → (Option + → on Mac)", description: "Next form field - Forward through inputs" },
-        { key: "Alt + ← (Option + ← on Mac)", description: "Previous form field - Backward through inputs" },
+        { key: "Ctrl + Shift + Space", description: "Turn OPSIS Assist continuous listening and reading cursor on or off" },
+        { key: "↓", description: "Read the next content unit while OPSIS Assist is on" },
+        { key: "↑", description: "Read the previous content unit while OPSIS Assist is on" },
+        { key: "Enter / Space", description: "Activate the current OPSIS Assist item" },
         { key: "Tab", description: "Standard forward navigation (all browsers, all countries)" },
         { key: "Shift + Tab", description: "Standard backward navigation (international)" },
-        { key: "Escape", description: "Close dialog or return to main content (universal)" },
-        { key: "Enter/Space", description: "Activate focused element (ARIA standard)" }
+        { key: "Alt + A / F11", description: "Open the Accessibility Center" },
+        { key: "Microphone button", description: "Start a short push-to-talk command while Assist is off" }
       ]
     },
     {
-      title: "ARIA Landmark Navigation",
+      title: "Exam Navigation",
       key: "landmarks",
       badge: "Section 508",
       shortcuts: [
-        { key: "Alt + M (Option + M on Mac)", description: "Jump to Main content region (primary content area)" },
-        { key: "Alt + N (Option + N on Mac)", description: "Jump to Navigation region (menu/nav bars)" },
-        { key: "Alt + F (Option + F on Mac)", description: "Jump to Footer/contentinfo region" },
-        { key: "Alt + S (Option + S on Mac)", description: "Jump to Search region (if available)" },
-        { key: "Alt + R (Option + R on Mac)", description: "Jump to Form region (main form areas)" },
-        { key: "Ctrl + Alt + H (Cmd + Option + H on Mac)", description: "Show/hide this help dialog" },
-        { key: "Ctrl + Alt + S (Cmd + Option + S on Mac)", description: "Jump to Submit/Save button" },
-        { key: "Ctrl + Alt + E (Cmd + Option + E on Mac)", description: "Jump to first error or validation message" }
+        { key: "Alt + N", description: "Move to the next exam question" },
+        { key: "Alt + P", description: "Move to the previous exam question" },
+        { key: "Alt + F", description: "Flag or unflag the current question" },
+        { key: "Alt + R", description: "Read the current question when narration is enabled" },
+        { key: "Alt + H", description: "Open exam keyboard help" }
       ]
     },
     {
-      title: "Element Type Navigation",
+      title: "Voice Commands",
       key: "elements",
       badge: "EN 301 549",
       shortcuts: [
-        { key: "Alt + H (Option + H on Mac)", description: "Next heading (any level H1-H6)" },
-        { key: "Alt + 1-6 (Option + 1-6 on Mac)", description: "Next heading by specific level (H1, H2, H3, etc.)" },
-        { key: "Alt + B (Option + B on Mac)", description: "Next button element" },
-        { key: "Alt + L (Option + L on Mac)", description: "Next link/anchor element" },
-        { key: "Alt + I (Option + I on Mac)", description: "Next input field/textbox" },
-        { key: "Alt + C (Option + C on Mac)", description: "Next checkbox element" },
-        { key: "Alt + O (Option + O on Mac)", description: "Next dropdown/select/combobox" },
-        { key: "Alt + T (Option + T on Mac)", description: "Next table element (if present)" }
+        { key: "Say “help”", description: "Hear commands available in the current page" },
+        { key: "Say “next question”", description: "Move forward in an exam" },
+        { key: "Say “previous question”", description: "Move backward in an exam" },
+        { key: "Say “read question”", description: "Read the current question" },
+        { key: "Say “submit exam”", description: "Stage submission; a separate confirmation is always required" }
       ]
     },
     {
@@ -238,7 +232,7 @@ export function InternationalKeyboardHelp() {
                     🎯 International Best Practices
                   </h3>
                   <ul className="text-green-800 dark:text-green-200 text-sm space-y-2" role="list">
-                    <li role="listitem">• <strong>Alt+Arrows:</strong> Universal navigation standard across 40+ countries</li>
+                    <li role="listitem">• <strong>OPSIS Assist:</strong> Use Up and Down to read app content while Assist is on</li>
                     <li role="listitem">• <strong>F5/F9:</strong> International coding shortcuts (VS Code, Eclipse, IntelliJ)</li>
                     <li role="listitem">• <strong>ARIA Landmarks:</strong> Jump between content areas instantly</li>
                     <li role="listitem">• <strong>Live Regions:</strong> Real-time screen reader announcements</li>

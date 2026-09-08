@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { VoiceControl } from '@/components/VoiceControl';
 import { useAccessibility } from '@/components/AccessibilityProvider';
-import { useVoiceCommands } from '@/hooks/useVoiceCommands';
+import { useOPSISAssist } from '@/hooks/useOPSISAssist';
 import type { ParsedVoiceCommand } from '@/voice/types';
 import type { ExamAttempt, ExamWithQuestions } from '@shared/schema';
 import { CheckCircle, XCircle, Download, ArrowLeft, Clock, Target } from 'lucide-react';
@@ -95,12 +95,7 @@ export default function Results({ currentUser }: ResultsProps) {
     updateSettings,
   ]);
 
-  const voice = useVoiceCommands({
-    scope: 'results',
-    mode: settings.voiceMode,
-    language: settings.language,
-    onCommand: voiceCommandHandler,
-  });
+  const voice = useOPSISAssist('results', voiceCommandHandler);
 
   if (isLoading) {
     return (
@@ -173,6 +168,7 @@ export default function Results({ currentUser }: ResultsProps) {
         error={voice.error}
         onToggle={voice.toggleListening}
         onStopSpeech={voice.stopSpeech}
+        assistEnabled={voice.assistEnabled}
       />
       <section aria-labelledby="results-heading">
         {/* Back Navigation */}

@@ -26,11 +26,10 @@ export default function Help({ currentUser }: HelpProps) {
       icon: Keyboard,
       color: 'text-blue-600 bg-blue-50',
       shortcuts: [
-        { keys: ['Alt', '↓'], description: 'Navigate to next element' },
-        { keys: ['Alt', '↑'], description: 'Navigate to previous element' },
-        { keys: ['Alt', 'M'], description: 'Jump to main content' },
-        { keys: ['Alt', 'N'], description: 'Jump to navigation' },
-        { keys: ['Alt', 'F'], description: 'Jump to footer' },
+        { keys: ['Tab'], description: 'Move to the next interactive element' },
+        { keys: ['Shift', 'Tab'], description: 'Move to the previous interactive element' },
+        { keys: ['↑', '↓'], description: 'Move the OPSIS Assist reading cursor when Assist is enabled' },
+        { keys: ['Enter', 'Space'], description: 'Advance the reading cursor on non-interactive content when Assist is enabled' },
       ]
     },
     {
@@ -38,11 +37,8 @@ export default function Help({ currentUser }: HelpProps) {
       icon: Zap,
       color: 'text-amber-600 bg-amber-50',
       shortcuts: [
-        { keys: ['Alt', 'B'], description: 'Jump to next button' },
-        { keys: ['Alt', 'L'], description: 'Jump to next link' },
-        { keys: ['Alt', 'I'], description: 'Jump to next input' },
-        { keys: ['Alt', 'C'], description: 'Jump to next card' },
-        { keys: ['Alt', '1–6'], description: 'Jump to heading level' },
+        { keys: ['Ctrl', 'Shift', 'Space'], description: 'Toggle continuous OPSIS Assist' },
+        { keys: ['Esc'], description: 'Stop active voice listening' },
       ]
     },
     {
@@ -52,7 +48,7 @@ export default function Help({ currentUser }: HelpProps) {
       shortcuts: [
         { keys: ['Alt', 'R'], description: 'Read current question aloud' },
         { keys: ['Alt', 'H'], description: 'Show keyboard help menu' },
-        { keys: ['Ctrl', 'M'], description: 'Start voice input (Mac: Cmd+M)' },
+        { keys: ['Ctrl', 'Shift', 'Space'], description: 'Turn continuous OPSIS Assist on or off' },
         { keys: ['F5'], description: 'Run code (VS Code shortcut)' },
         { keys: ['F9'], description: 'Reset code editor' },
       ]
@@ -119,10 +115,10 @@ export default function Help({ currentUser }: HelpProps) {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
                 { step: '1', title: 'Log in', desc: 'Enter your credentials on the login page. Tab through the form fields.' },
-                { step: '2', title: 'Browse exams', desc: 'On the Dashboard you\'ll see all available exams. Use Tab or Alt+↓ to navigate.' },
+                { step: '2', title: 'Browse exams', desc: 'On the Dashboard you\'ll see all available exams. Use Tab and Shift+Tab to navigate.' },
                 { step: '3', title: 'Start an exam', desc: 'Press Enter on "Start Exam". The editor opens with full keyboard navigation.' },
                 { step: '4', title: 'Answer questions', desc: 'Tab between questions. Alt+R reads the current question aloud.' },
-                { step: '5', title: 'Submit', desc: 'Press the Submit button or use Ctrl+S. Results appear instantly.' },
+                { step: '5', title: 'Submit', desc: 'Activate the Submit Exam button, then confirm submission. Results appear instantly.' },
                 { step: '6', title: 'Review results', desc: 'Navigate to Results from the Dashboard to see your score breakdown.' },
               ].map(item => (
                 <div key={item.step} className="flex gap-3">
@@ -138,6 +134,16 @@ export default function Help({ currentUser }: HelpProps) {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      <section className="mb-8" aria-labelledby="assist-heading">
+        <h2 id="assist-heading" className="text-xl font-bold text-foreground mb-4">OPSIS Assist</h2>
+        <Card className="border-border shadow-sm"><CardContent className="p-5 text-sm text-muted-foreground">
+          OPSIS Assist has one shared microphone session. Choose Push to talk or continuous Assist in Accessibility Center.
+          Available commands are scoped to the page; say “help” for the current list. Voice and narration are optional,
+          and all commands remain available through keyboard and standard controls. OPSIS Assist is an in-app aid; it
+          does not replace NVDA, JAWS, VoiceOver, or any other screen reader.
+        </CardContent></Card>
       </section>
 
       {/* Keyboard shortcuts */}

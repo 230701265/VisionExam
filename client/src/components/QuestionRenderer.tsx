@@ -1,14 +1,12 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useAccessibility } from './AccessibilityProvider';
-import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { CodingQuestionRenderer } from './CodingQuestionRenderer';
 import type { CodeEditorVoiceActions } from './CodeEditor';
 import type { Question, MultipleChoiceOption } from '@shared/schema';
-import { Volume2, Flag, Mic, MicOff } from 'lucide-react';
+import { Volume2, Flag } from 'lucide-react';
 
 interface QuestionRendererProps {
   question: Question;
@@ -42,21 +40,6 @@ export function QuestionRenderer({
   onCodeVoiceActionsReady,
 }: QuestionRendererProps) {
   const { speak, announceToScreenReader } = useAccessibility();
-  const {
-    isListening,
-    transcript,
-    interimTranscript,
-    error: speechError,
-    isSupported,
-    startListening,
-    stopListening,
-    resetTranscript,
-    clearError
-  } = useSpeechRecognition({
-    continuous: true,
-    interimResults: true,
-    language: 'en-US'
-  });
 
   const readQuestion = () => {
     const questionText = `Question ${questionNumber}: ${question.text}`;
@@ -67,26 +50,6 @@ export function QuestionRenderer({
   const handleAnswerChange = (value: string) => {
     onAnswerChange(value);
     announceToScreenReader(`Answer updated`);
-  };
-
-  const handleVoiceInput = () => {
-    if (isListening) {
-      stopListening();
-    } else {
-      clearError();
-      resetTranscript();
-      startListening();
-    }
-  };
-
-  const insertVoiceText = () => {
-    if (transcript) {
-      const currentAnswer = answer || '';
-      const newAnswer = currentAnswer + (currentAnswer ? ' ' : '') + transcript;
-      onAnswerChange(newAnswer);
-      resetTranscript();
-      announceToScreenReader(`Voice input added: ${transcript}`);
-    }
   };
 
   const handleNext = () => {
@@ -144,32 +107,6 @@ export function QuestionRenderer({
         <Label htmlFor={`answer-${questionNumber}`} className="text-lg font-medium">
           Your Answer:
         </Label>
-        {isSupported && (
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={handleVoiceInput}
-              variant={isListening ? "default" : "outline"}
-              size="sm"
-              className="focus-visible:outline-2 focus-visible:outline-primary"
-              aria-describedby="voice-input-desc"
-              data-testid="button-voice-input"
-            >
-              {isListening ? <MicOff className="h-4 w-4 mr-1" /> : <Mic className="h-4 w-4 mr-1" />}
-              {isListening ? 'Stop Recording' : 'Voice Input'}
-            </Button>
-            {transcript && (
-              <Button
-                onClick={insertVoiceText}
-                variant="secondary"
-                size="sm"
-                className="focus-visible:outline-2 focus-visible:outline-primary"
-                data-testid="button-insert-voice-text"
-              >
-                Insert Voice Text
-              </Button>
-            )}
-          </div>
-        )}
       </div>
       
       <Textarea
@@ -178,65 +115,16 @@ export function QuestionRenderer({
         onChange={(e) => handleAnswerChange(e.target.value)}
         rows={8}
         className="w-full text-base focus:ring-2 focus:ring-primary"
-        placeholder={isSupported ? "Type your detailed answer here or use voice input..." : "Type your detailed answer here. You can write multiple paragraphs..."}
+        placeholder="Type your detailed answer here. You can write multiple paragraphs..."
         aria-describedby={`answer-help-${questionNumber}`}
         data-testid="textarea-short-answer"
-        onFocus={() => announceToScreenReader(`Short answer text field for question ${questionNumber}. Type your detailed response here or use voice input.`)}
+        onFocus={() => announceToScreenReader(`Short answer text field for question ${questionNumber}. Type your detailed response here.`)}
       />
       
-      {/* Voice Recognition Status */}
-      {isSupported && (
-        <div className="mt-2">
-          {isListening && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-              <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-1">
-                🎤 Listening... Speak now
-              </p>
-              {interimTranscript && (
-                <p className="text-sm text-red-600 dark:text-red-300 italic">
-                  "{interimTranscript}"
-                </p>
-              )}
-            </div>
-          )}
-          
-          {transcript && !isListening && (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-              <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
-                Voice input recognized:
-              </p>
-              <p className="text-sm text-green-700 dark:text-green-300">
-                "{transcript}"
-              </p>
-            </div>
-          )}
-          
-          {speechError && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-              <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-1">
-                Voice input error:
-              </p>
-              <p className="text-sm text-red-700 dark:text-red-300">
-                {speechError}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-      
       <p id={`answer-help-${questionNumber}`} className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-        {isSupported 
-          ? "Type your response or click 'Voice Input' to speak your answer. Use Tab to navigate and Enter for new lines. Press Alt + R to hear the question again."
-          : "Please provide a detailed explanation. Use the Tab key to navigate and Enter to create new lines. Press Alt + R to hear the question again."
-        }
+        Please provide a detailed explanation. Use the Tab key to navigate and Enter to create new lines. Press Alt + R to hear the question again.
       </p>
       
-      <p id="voice-input-desc" className="sr-only">
-        {isListening 
-          ? "Voice recording is active. Speak your answer and click 'Stop Recording' when finished."
-          : "Click to start voice recording. Your speech will be converted to text that you can then insert into your answer."
-        }
-      </p>
       
       {answer && (
         <p className="text-sm text-green-600 dark:text-green-400 mt-2">

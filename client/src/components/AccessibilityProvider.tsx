@@ -1,7 +1,9 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { useInternationalKeyboardNavigation } from '@/hooks/useInternationalKeyboardNavigation';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { VoiceNarrator, type NarratorOptions } from '@/voice/narrator';
-import type { VoiceMode } from '@/voice/types';
+import { matchVoiceCommand } from '@/voice/commandRegistry';
+import { BrowserSpeechEngine, isSpeechRecognitionSupported } from '@/voice/speechRecognition';
+import { ReadingScanner, describeReadingElement, isNativeReadingExempt } from '@/voice/readingScanner';
+import type { ParsedVoiceCommand, VoiceMode, VoiceScope } from '@/voice/types';
 
 export interface AccessibilitySettings {
   fontSize: number;
@@ -51,6 +53,7 @@ export interface AccessibilitySettings {
   liveCaptions: boolean;
   voiceNavigation: boolean;
   voiceMode: VoiceMode;
+  assistEnabled: boolean;
   screenReaderMode: boolean;
   wordSpacing: number;
 }
@@ -70,7 +73,24 @@ interface AccessibilityContextType {
   resetToDefaults: () => void;
   exportSettings: () => string;
   importSettings: (settingsString: string) => boolean;
+  assist: OPSISAssist;
 }
+export interface OPSISAssist {
+  isListening: boolean; interimText: string; lastTranscript: string; error: string | null;
+  isSupported: boolean; toggleListening: () => void; stopListening: () => void; stopSpeech: () => void;
+  assistEnabled: boolean; setAssistEnabled: (enabled: boolean) => void;
+  registerVoiceScope: (scope: VoiceScope, handler: (command: ParsedVoiceCommand) => boolean | void) => () => void;
+  registerShortcut: (id: string, shortcut: AssistShortcut) => () => void;
+}
+export interface AssistShortcut {
+  key: string; ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; metaKey?: boolean;
+  action: () => void; allowInEditable?: boolean;
+}
+
+const ASSIST_TUTORIAL =
+  'OPSIS Assist tutorial. Use Up and Down Arrow to move through app content. ' +
+  'Press Enter or Space to activate the current item. Speak a command at any time. ' +
+  'Press Control Shift Space to turn OPSIS Assist off.';
 
 const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);
 
@@ -170,8 +190,6 @@ function ReadingGuideLine() {
 
 /* ── Provider ────────────────────────────────────────────── */
 export function AccessibilityProvider({ children, userId }: { children: ReactNode; userId?: string }) {
-  useInternationalKeyboardNavigation();
-
   const getDefaultSettings = (): AccessibilitySettings => ({
     fontSize: 16,
     contrastMode: 'normal',
@@ -220,6 +238,7 @@ export function AccessibilityProvider({ children, userId }: { children: ReactNod
     liveCaptions: false,
     voiceNavigation: true,
     voiceMode: 'push-to-talk',
+    assistEnabled: false,
     screenReaderMode: false,
   });
 
@@ -231,12 +250,30 @@ export function AccessibilityProvider({ children, userId }: { children: ReactNod
   const [ariaLiveRegion, setAriaLiveRegion] = useState<HTMLElement | null>(null);
   const [currentCaption, setCurrentCaption] = useState('');
   const narratorRef = useRef<VoiceNarrator | null>(null);
+  const [assistListening, setAssistListening] = useState(false);
+  const [assistInterim, setAssistInterim] = useState('');
+  const [assistTranscript, setAssistTranscript] = useState('');
+  const [assistError, setAssistError] = useState<string | null>(null);
+  const [readingCursorElement, setReadingCursorElement] = useState<HTMLElement | null>(null);
+  const [showAssistQuestion, setShowAssistQuestion] = useState(false);
+  const settingsRef = useRef(settings);
+  const voiceScopesRef = useRef(new Map<VoiceScope, (command: ParsedVoiceCommand) => boolean | void>());
+  const shortcutsRef = useRef(new Map<string, AssistShortcut>());
+  const engineRef = useRef<BrowserSpeechEngine | null>(null);
+  const desiredListeningRef = useRef(false);
+  const restartTimerRef = useRef<number | null>(null);
+  const transcriptCooldownRef = useRef(new Map<string, number>());
+  const backoffRef = useRef(250);
+  const scannerRef = useRef<ReadingScanner | null>(null);
+  const startAssistRef = useRef<() => void>(() => {});
+  const generationRef = useRef(0);
+  const isSpeakingRef = useRef(false);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   useEffect(() => {
     if ('speechSynthesis' in window) {
       setSpeechSynthesisObj(window.speechSynthesis);
       setSpeechSupported(true);
-      setSettings(prev => ({ ...prev, speechEnabled: true }));
     }
 
     const liveRegion = document.createElement('div');
@@ -250,7 +287,13 @@ export function AccessibilityProvider({ children, userId }: { children: ReactNod
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings);
-        const merged = { ...getDefaultSettings(), ...parsed };
+        // Versionless settings predate continuous Assist; retain all preferences
+        // while converting the earlier experimental value if it exists.
+        const migratedVoiceMode: VoiceMode =
+          parsed.voiceMode === 'continuous' ? 'assist' :
+          ['off', 'push-to-talk', 'assist'].includes(parsed.voiceMode) ? parsed.voiceMode :
+          getDefaultSettings().voiceMode;
+        const merged = { ...getDefaultSettings(), ...parsed, voiceMode: migratedVoiceMode };
         setSettings(merged);
         applyAccessibilitySettings(merged);
       } catch {
@@ -299,6 +342,7 @@ export function AccessibilityProvider({ children, userId }: { children: ReactNod
 
   useEffect(() => {
     narratorRef.current = new VoiceNarrator(speechSynthesisObj, (speaking, text) => {
+      isSpeakingRef.current = speaking;
       setIsSpeaking(speaking);
       if (speaking && text) setCurrentCaption(text);
       if (!speaking) setCurrentCaption('');
@@ -349,6 +393,7 @@ export function AccessibilityProvider({ children, userId }: { children: ReactNod
   }, [ariaLiveRegion]);
 
   const speak = useCallback((text: string, options: NarratorOptions = {}) => {
+    if (!settings.speechEnabled) return;
     narratorRef.current?.speak(text, {
       ...options,
       rate: options.rate ?? settings.speechRate / 10,
@@ -357,12 +402,199 @@ export function AccessibilityProvider({ children, userId }: { children: ReactNod
       voiceName: options.voiceName ?? settings.speechVoice,
       priority: options.priority ?? 'queue',
     });
-  }, [settings.speechPitch, settings.speechRate, settings.speechVolume, settings.speechVoice]);
+  }, [settings.speechEnabled, settings.speechPitch, settings.speechRate, settings.speechVolume, settings.speechVoice]);
+  const speakRef = useRef(speak);
+  const announceRef = useRef(announceToScreenReader);
+  useEffect(() => { speakRef.current = speak; announceRef.current = announceToScreenReader; }, [speak, announceToScreenReader]);
+
+  const stopAssist = useCallback(() => {
+    desiredListeningRef.current = false;
+    generationRef.current += 1;
+    if (restartTimerRef.current !== null) window.clearTimeout(restartTimerRef.current);
+    restartTimerRef.current = null;
+    engineRef.current?.stop();
+    engineRef.current = null;
+    setAssistListening(false); setAssistInterim('');
+  }, []);
+  const startAssist = useCallback(() => {
+    const configured = settingsRef.current;
+    if ((!configured.assistEnabled && configured.voiceMode === 'off') || desiredListeningRef.current) return;
+    if (!isSpeechRecognitionSupported()) {
+      setAssistError('Voice input is unavailable in this browser. Keyboard controls remain available.');
+      announceRef.current('Voice input is unavailable in this browser. Keyboard controls remain available.');
+      return;
+    }
+    desiredListeningRef.current = true;
+    const generation = ++generationRef.current;
+    const continuous = configured.assistEnabled;
+    const scheduleRecovery = () => {
+      if (!continuous || !desiredListeningRef.current || !settingsRef.current.assistEnabled || restartTimerRef.current !== null) return;
+      generationRef.current += 1;
+      setAssistListening(false);
+      restartTimerRef.current = window.setTimeout(() => {
+        restartTimerRef.current = null;
+        engineRef.current?.stop();
+        engineRef.current = null;
+        desiredListeningRef.current = false;
+        startAssistRef.current();
+      }, backoffRef.current);
+      backoffRef.current = Math.min(backoffRef.current * 2, 4000);
+    };
+    const engine = new BrowserSpeechEngine(
+      configured.language,
+      text => { if (generation === generationRef.current) setAssistInterim(text); },
+      result => {
+        if (generation !== generationRef.current || isSpeakingRef.current) return;
+        const transcript = result.transcript.trim();
+        const key = transcript.toLocaleLowerCase();
+        const now = Date.now();
+        if (!transcript || now - (transcriptCooldownRef.current.get(key) ?? 0) < 1500) return;
+        transcriptCooldownRef.current.set(key, now);
+        setAssistTranscript(transcript); setAssistInterim('');
+        const registrations = Array.from(voiceScopesRef.current.entries()).reverse();
+        let handled = false;
+        let lowConfidence = false;
+        for (const [scope, handler] of registrations) {
+          const match = matchVoiceCommand(transcript, scope, result.confidence ?? 1);
+          lowConfidence ||= match.status === 'low-confidence';
+          if (match.status === 'matched' && match.command && handler(match.command) !== false) {
+            handled = true;
+            break;
+          }
+        }
+        if (!handled) {
+          const message = lowConfidence ? `I heard ${transcript}. Please repeat.` : 'Command not understood. Say help for available commands.';
+          setAssistError(message); announceRef.current(message);
+          if (settingsRef.current.speechEnabled && settingsRef.current.audioInstructions) speakRef.current(message, { priority: 'interrupt' });
+        }
+      },
+      () => { if (generation === generationRef.current) { backoffRef.current = 250; setAssistListening(true); setAssistError(null); } },
+      () => {
+        if (generation !== generationRef.current) return;
+        setAssistListening(false); setAssistInterim('');
+        scheduleRecovery();
+      },
+      message => {
+        if (generation !== generationRef.current) return;
+        setAssistError(message); setAssistListening(false);
+        if (/denied|no microphone|unavailable in this browser/i.test(message)) {
+          desiredListeningRef.current = false;
+        } else {
+          scheduleRecovery();
+        }
+      },
+      continuous ? 0 : 4000,
+      continuous,
+    );
+    engineRef.current = engine; engine.start();
+  }, []);
+  startAssistRef.current = startAssist;
+  const toggleListening = useCallback(() => {
+    // The microphone control is PTT only; continuous recognition belongs to Assist.
+    if (!settingsRef.current.assistEnabled) {
+      if (desiredListeningRef.current) stopAssist(); else startAssist();
+    }
+  }, [startAssist, stopAssist]);
+  const applyAssistEnabled = useCallback((enabled: boolean, includeTutorial = false) => {
+    if (enabled && desiredListeningRef.current) stopAssist();
+    setSettings(previous => {
+      const next = { ...previous, assistEnabled: enabled };
+      settingsRef.current = next;
+      localStorage.setItem('opsis-accessibility-settings', JSON.stringify(next));
+      return next;
+    });
+    const status = `OPSIS Assist ${enabled ? 'on' : 'off'}.`;
+    const message = enabled && includeTutorial ? `${status} ${ASSIST_TUTORIAL}` : status;
+    announceRef.current(message);
+    if (settingsRef.current.speechEnabled && settingsRef.current.audioInstructions) {
+      speakRef.current(message, { priority: 'interrupt' });
+    }
+  }, [stopAssist]);
+  const requestAssistEnabled = useCallback((enabled: boolean) => {
+    if (enabled) {
+      const tutorialKey = `opsis-assist-tutorial:${userId ?? 'anonymous'}`;
+      if (!localStorage.getItem(tutorialKey)) {
+        setShowAssistQuestion(true);
+        return;
+      }
+    }
+    applyAssistEnabled(enabled);
+  }, [applyAssistEnabled, userId]);
+
+  useEffect(() => {
+    const isEditable = (target: EventTarget | null) => {
+      const el = target as HTMLElement | null;
+      return Boolean(el?.closest('input, textarea, [contenteditable="true"], [role="textbox"], .monaco-editor'));
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.code === 'Space') {
+        event.preventDefault();
+        requestAssistEnabled(!settingsRef.current.assistEnabled);
+        return;
+      }
+      if (settingsRef.current.assistEnabled && !event.ctrlKey && !event.altKey && !event.metaKey &&
+        ['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key) && !isEditable(event.target) &&
+        !isNativeReadingExempt(event.target as HTMLElement)) {
+        const scanner = scannerRef.current;
+        const element = event.key === 'Enter' || event.key === ' ' ? scanner?.activate() : scanner?.move(event.key === 'ArrowUp' ? -1 : 1);
+        if (element) {
+          event.preventDefault();
+          setReadingCursorElement(element);
+          element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          const description = describeReadingElement(element);
+          announceRef.current(description);
+          if (settingsRef.current.speechEnabled && settingsRef.current.audioInstructions) speakRef.current(description, { priority: 'drop-if-speaking' });
+          return;
+        }
+      }
+      for (const shortcut of Array.from(shortcutsRef.current.values())) {
+        if (event.key.toLowerCase() === shortcut.key.toLowerCase() &&
+          !!event.ctrlKey === !!shortcut.ctrlKey && !!event.shiftKey === !!shortcut.shiftKey &&
+          !!event.altKey === !!shortcut.altKey && !!event.metaKey === !!shortcut.metaKey &&
+          (shortcut.allowInEditable || !isEditable(event.target))) {
+          event.preventDefault(); shortcut.action(); return;
+        }
+      }
+      if (event.key === 'Escape' && assistListening) stopAssist();
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [assistListening, requestAssistEnabled, stopAssist]);
+  useEffect(() => {
+    if (settings.assistEnabled) {
+      scannerRef.current ??= new ReadingScanner();
+      scannerRef.current.start(() => {
+        setReadingCursorElement(current => current && !current.isConnected ? null : current);
+      });
+      startAssist();
+    }
+    else stopAssist();
+    return () => {
+      // Scanner is route-aware and may refresh; recognition is intentionally not
+      // stopped here so continuous Assist survives page/scope navigation.
+      scannerRef.current?.stop();
+      scannerRef.current = null;
+    };
+  }, [settings.assistEnabled, settings.voiceMode, startAssist, stopAssist]);
+  useEffect(() => () => stopAssist(), [stopAssist]);
+  const registerVoiceScope = useCallback((scope: VoiceScope, handler: (command: ParsedVoiceCommand) => boolean | void) => {
+    voiceScopesRef.current.set(scope, handler);
+    return () => { if (voiceScopesRef.current.get(scope) === handler) voiceScopesRef.current.delete(scope); };
+  }, []);
+  const registerShortcut = useCallback((id: string, shortcut: AssistShortcut) => {
+    shortcutsRef.current.set(id, shortcut);
+    return () => { if (shortcutsRef.current.get(id) === shortcut) shortcutsRef.current.delete(id); };
+  }, []);
+  const assist: OPSISAssist = useMemo(() => ({
+    isListening: assistListening, interimText: assistInterim, lastTranscript: assistTranscript, error: assistError,
+    isSupported: isSpeechRecognitionSupported(), toggleListening, stopListening: stopAssist, stopSpeech: () => narratorRef.current?.cancel(),
+    assistEnabled: settings.assistEnabled, setAssistEnabled: requestAssistEnabled, registerVoiceScope, registerShortcut,
+  }), [assistError, assistInterim, assistListening, assistTranscript, registerShortcut, registerVoiceScope, requestAssistEnabled, settings.assistEnabled, stopAssist, toggleListening]);
 
   useEffect(() => {
     const handleNarrationRequest = (event: Event) => {
       const message = (event as CustomEvent<{ message?: string }>).detail?.message;
-      if (message) speak(message, { priority: 'queue' });
+      if (message && settings.speechEnabled && settings.audioInstructions) speak(message, { priority: 'queue' });
     };
     document.addEventListener('opsis:narrate', handleNarrationRequest);
     return () => document.removeEventListener('opsis:narrate', handleNarrationRequest);
@@ -436,7 +668,7 @@ export function AccessibilityProvider({ children, userId }: { children: ReactNod
 
   return (
     <AccessibilityContext.Provider value={{
-      settings, updateSettings, announceToScreenReader, speak, stopSpeaking, pauseSpeaking, resumeSpeaking,
+      settings, updateSettings, announceToScreenReader, speak, stopSpeaking, pauseSpeaking, resumeSpeaking, assist,
       isSpeaking, speechSupported, isLoading, currentCaption,
       resetToDefaults, exportSettings, importSettings,
     }}>
@@ -444,9 +676,45 @@ export function AccessibilityProvider({ children, userId }: { children: ReactNod
       {settings.readingMask && <ReadingMask height={settings.readingMaskHeight} />}
       {settings.readingGuide && <ReadingGuideLine />}
       {settings.liveCaptions && <LiveCaptionsBar text={currentCaption} />}
-      <div className="sr-only" role="complementary" aria-label="Screen reader information">
+      {readingCursorElement && (
+        <div
+          aria-hidden="true"
+          className="fixed z-[9995] rounded border-2 border-primary bg-primary/10 pointer-events-none"
+          style={{ ...(() => { const box = readingCursorElement.getBoundingClientRect(); return { top: box.top, left: box.left, width: box.width, height: box.height }; })() }}
+        />
+      )}
+      {showAssistQuestion && (
+        <div className="fixed inset-0 z-[10000] grid place-items-center bg-black/40 p-4" role="presentation">
+          <section role="dialog" aria-modal="true" aria-labelledby="assist-question-title" aria-describedby="assist-question-description" className="max-w-md rounded-xl bg-card p-6 shadow-xl">
+            <h2 id="assist-question-title" className="text-lg font-semibold">OPSIS Assist preference</h2>
+             <p className="mt-2 text-sm">Do you already use a screen reader like VoiceOver, NVDA, or JAWS?</p>
+            <p id="assist-question-description" className="mt-2 text-sm text-muted-foreground">OPSIS Assist is always announced through accessible status text. Choosing Yes keeps spoken narration off by default. You can change narration at any time in Accessibility Center.</p>
+            <div className="mt-4 flex gap-2">
+              <button autoFocus className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground" onClick={() => {
+                localStorage.setItem(`opsis-assist-tutorial:${userId ?? 'anonymous'}`, JSON.stringify({ asked: true, answer: 'yes' }));
+                setSettings(previous => {
+                  const next = { ...previous, speechEnabled: false };
+                   settingsRef.current = next;
+                  localStorage.setItem('opsis-accessibility-settings', JSON.stringify(next));
+                  return next;
+                });
+                 applyAssistEnabled(true, true);
+                setShowAssistQuestion(false);
+              }}>Yes, keep narration off</button>
+              <button className="rounded border px-3 py-2 text-sm" onClick={() => {
+                localStorage.setItem(`opsis-assist-tutorial:${userId ?? 'anonymous'}`, JSON.stringify({ asked: true, answer: 'no' }));
+                 applyAssistEnabled(true, true);
+                setShowAssistQuestion(false);
+              }}>No, keep my current setting</button>
+            </div>
+          </section>
+        </div>
+      )}
+      <div className="sr-only" role="complementary" aria-label="OPSIS Assist status and tutorial">
         <p>OPSIS — Accessibility-first examination platform. WCAG 2.2 AA compliant.</p>
-        <p>Use Alt+Up/Down to navigate sections. Tab for interactive elements. Alt+A for Accessibility Center.</p>
+        <p role="status" aria-live="polite">OPSIS Assist is {settings.assistEnabled ? 'on' : 'off'}.</p>
+        <p>Press Ctrl+Shift+Space to turn OPSIS Assist on or off. When Assist is off, the microphone button starts a short push-to-talk command session. Say help to hear commands in the current page.</p>
+        <p>Use Tab for interactive elements. Alt+A opens Accessibility Center.</p>
       </div>
     </AccessibilityContext.Provider>
   );

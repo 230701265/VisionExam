@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -29,7 +29,7 @@ import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { usePageNavigation } from "@/hooks/usePageNavigation";
+import { useOPSISAssist } from "@/hooks/useOPSISAssist";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Roll number/Username is required"),
@@ -149,7 +149,7 @@ function AuthForm() {
           <ul className="mt-8 space-y-3">
             {[
               'NVDA, JAWS, VoiceOver compatible',
-              'Alt+Arrow keys navigation',
+              'OPSIS Assist reading cursor',
               'Text-to-speech built in',
               'VS Code–like code editor',
             ].map(f => (
@@ -335,14 +335,6 @@ function AuthForm() {
 }
 
 function Router({ currentUser, onLogout }: { currentUser: User; onLogout: () => void }) {
-  // Enable page navigation for keyboard-only users
-  const { announceHelp } = usePageNavigation({
-    enableArrowNavigation: true,
-    enableQuickJumps: true,
-    announceNavigation: true,
-    skipInvisible: true
-  });
-
   const isStaff = currentUser.role === 'instructor' || currentUser.role === 'admin';
 
   return (
@@ -374,6 +366,15 @@ function Router({ currentUser, onLogout }: { currentUser: User; onLogout: () => 
       <Route component={NotFound} />
     </Switch>
   );
+}
+
+function AppAssistShortcuts({ setOpen }: { setOpen: Dispatch<SetStateAction<boolean>> }) {
+  useOPSISAssist('global', () => {}, {
+    accessibility: { key: 'a', altKey: true, action: () => setOpen(open => !open) },
+    accessibilityF11: { key: 'F11', action: () => setOpen(open => !open) },
+    escape: { key: 'Escape', action: () => setOpen(false), allowInEditable: true },
+  });
+  return null;
 }
 
 function App() {
@@ -412,37 +413,6 @@ function App() {
     };
   }, []);
 
-  // Keyboard shortcut for accessibility panel
-  useEffect(() => {
-    const handleKeyboard = (e: KeyboardEvent) => {
-      // Only trigger if not in an input field
-      const isInInput = (e.target as HTMLElement)?.tagName?.toLowerCase() === 'input' || 
-                       (e.target as HTMLElement)?.tagName?.toLowerCase() === 'textarea' ||
-                       (e.target as HTMLElement)?.contentEditable === 'true';
-      
-      // Alt/Option + A for accessibility panel (avoids conflicts with Ctrl+A)
-      if (e.altKey && e.key.toLowerCase() === 'a' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !isInInput) {
-        e.preventDefault();
-        setIsQuickPanelOpen(prev => !prev);
-      }
-      
-      // F11 as alternative shortcut for accessibility panel
-      if (e.key === 'F11' && !isInInput) {
-        e.preventDefault();
-        setIsQuickPanelOpen(prev => !prev);
-      }
-      
-      // Escape to close panel
-      if (e.key === 'Escape' && isQuickPanelOpen) {
-        e.preventDefault();
-        setIsQuickPanelOpen(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyboard, true);
-    return () => document.removeEventListener('keydown', handleKeyboard, true);
-  }, [isQuickPanelOpen]);
-
   const handleLogout = async () => {
     try {
       await apiRequest('POST', '/api/auth/logout');
@@ -472,6 +442,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AccessibilityProvider userId={currentUser.id}>
+          <AppAssistShortcuts setOpen={setIsQuickPanelOpen} />
           <div className="min-h-screen bg-background text-foreground">
             {/* Skip Links */}
             <div className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50">
@@ -536,7 +507,7 @@ function App() {
                   {/* Keyboard shortcuts */}
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
                     <span><kbd className="font-mono bg-muted px-1.5 py-0.5 rounded border border-border mr-1">Alt+A</kbd>Accessibility</span>
-                    <span><kbd className="font-mono bg-muted px-1.5 py-0.5 rounded border border-border mr-1">Alt+↑↓</kbd>Navigate</span>
+                    <span><kbd className="font-mono bg-muted px-1.5 py-0.5 rounded border border-border mr-1">Ctrl+Shift+Space</kbd>Assist</span>
                     <span><kbd className="font-mono bg-muted px-1.5 py-0.5 rounded border border-border mr-1">F5</kbd>Run code</span>
                     <span><kbd className="font-mono bg-muted px-1.5 py-0.5 rounded border border-border mr-1">Esc</kbd>Close</span>
                   </div>

@@ -51,6 +51,7 @@ export class BrowserSpeechEngine implements STTEngine {
     private readonly onEnd: () => void,
     private readonly onError: (message: string) => void,
     timeoutMs = 4000,
+    private readonly continuous = false,
   ) {
     this.supported = isSpeechRecognitionSupported();
     this.timeoutMs = timeoutMs;
@@ -65,7 +66,7 @@ export class BrowserSpeechEngine implements STTEngine {
 
     this.stop();
     const recognition = new Recognition();
-    recognition.continuous = false;
+    recognition.continuous = this.continuous;
     recognition.interimResults = true;
     recognition.lang = this.language;
     recognition.maxAlternatives = 1;
@@ -78,9 +79,10 @@ export class BrowserSpeechEngine implements STTEngine {
     recognition.onerror = event => {
       const messages: Record<string, string> = {
         'not-allowed': 'Microphone access was denied. Keyboard and screen-reader controls are still available.',
+        'service-not-allowed': 'Microphone access was denied by the browser speech service. Keyboard and screen-reader controls are still available.',
         'audio-capture': 'No microphone was found. Keyboard and screen-reader controls are still available.',
         'no-speech': 'No speech was detected. Please try again.',
-        network: 'The browser speech service is unavailable. Please try again.',
+        network: 'A speech recognition network error occurred. Retrying.',
       };
       this.onError(messages[event.error ?? ''] ?? 'Voice input failed. Please try again.');
     };
@@ -102,7 +104,7 @@ export class BrowserSpeechEngine implements STTEngine {
 
     this.recognition = recognition;
     recognition.start();
-    this.timeoutId = window.setTimeout(() => this.stop(), this.timeoutMs);
+    if (this.timeoutMs > 0) this.timeoutId = window.setTimeout(() => this.stop(), this.timeoutMs);
   }
 
   stop() {

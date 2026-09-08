@@ -1,4 +1,4 @@
-export type VoiceMode = 'off' | 'push-to-talk';
+export type VoiceMode = 'off' | 'push-to-talk' | 'assist';
 
 export type VoiceScope = 'global' | 'question' | 'editor' | 'results';
 

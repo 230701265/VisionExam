@@ -192,7 +192,7 @@ function PreviewPanel({ settings }: { settings: ReturnType<typeof useAccessibili
    MAIN COMPONENT
 ════════════════════════════════════════════════════════════ */
 export default function AccessibilityCenter({ currentUser: _currentUser }: Props) {
-  const { settings, updateSettings, resetToDefaults, exportSettings, importSettings, isSpeaking, speak, stopSpeaking } = useAccessibility();
+  const { settings, updateSettings, resetToDefaults, exportSettings, importSettings, isSpeaking, speak, stopSpeaking, assist } = useAccessibility();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('vision');
   const [saveIndicator, setSaveIndicator] = useState(false);
@@ -661,7 +661,7 @@ export default function AccessibilityCenter({ currentUser: _currentUser }: Props
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="standard">Standard (Tab key)</SelectItem>
-                        <SelectItem value="enhanced">Enhanced (Alt+Arrow keys)</SelectItem>
+                        <SelectItem value="enhanced">Enhanced (OPSIS Assist)</SelectItem>
                         <SelectItem value="custom">Custom (configurable)</SelectItem>
                       </SelectContent>
                     </Select>
@@ -682,7 +682,7 @@ export default function AccessibilityCenter({ currentUser: _currentUser }: Props
                       aria-label="Toggle sticky focus indicator"
                     />
                   </SettingRow>
-                  <SettingRow id="landmark-nav" label="Landmark Navigation" description="Enable quick navigation between ARIA landmark regions (Alt+Arrow keys)">
+                  <SettingRow id="landmark-nav" label="Landmark Navigation" description="Include ARIA landmark regions in enhanced keyboard navigation">
                     <Switch
                       id="landmark-nav"
                       checked={settings.landmarkNavigation}
@@ -701,6 +701,15 @@ export default function AccessibilityCenter({ currentUser: _currentUser }: Props
                 </SectionCard>
 
                 <SectionCard icon={Mic} iconColor="bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400" title="Voice Navigation" description="Control the platform using your voice">
+                  <SettingRow id="opsis-assist" label="OPSIS Assist" badge="NEW" description="Enable continuous, hands-free command listening. This is separate from spoken narration and push-to-talk. Ctrl+Shift+Space toggles Assist.">
+                    <Switch
+                      id="opsis-assist"
+                      checked={settings.assistEnabled}
+                      onCheckedChange={assist.setAssistEnabled}
+                      aria-label="Toggle continuous OPSIS Assist"
+                    />
+                  </SettingRow>
+                  <p className="pt-3 text-xs text-muted-foreground">OPSIS Assist is an in-app aid, not a replacement for NVDA, JAWS, VoiceOver, or another screen reader.</p>
                   <SettingRow id="voice-nav" label="Voice Navigation" badge="NEW" description="Navigate and control OPSIS using voice commands such as 'Next question', 'Submit exam', 'Read question'">
                     <Switch
                       id="voice-nav"
@@ -712,11 +721,11 @@ export default function AccessibilityCenter({ currentUser: _currentUser }: Props
                       aria-label="Toggle voice navigation"
                     />
                   </SettingRow>
-                  <SettingRow id="voice-mode" label="Voice Activation" description="Push-to-talk listens only for a short command after you press Ctrl+Shift+Space or activate the microphone button">
+                  <SettingRow id="voice-mode" label="Push-to-talk availability" description="Controls the microphone button when continuous OPSIS Assist is off.">
                     <Select
                       value={settings.voiceMode}
                       onValueChange={(value) => handleUpdate({
-                        voiceMode: value as 'off' | 'push-to-talk',
+                        voiceMode: value as 'off' | 'push-to-talk' | 'assist',
                         voiceNavigation: value !== 'off',
                       })}
                     >

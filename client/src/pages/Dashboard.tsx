@@ -775,7 +775,7 @@ export default function Dashboard({ currentUser }: DashboardProps) {
                   {[
                     { label: 'Screen Reader Ready', active: true, note: 'NVDA · JAWS · VoiceOver' },
                     { label: 'Text-to-Speech',      active: !!settings?.speechEnabled, note: settings?.speechEnabled ? `${(((settings?.speechRate ?? 10))/10).toFixed(1)}× speed` : 'Off' },
-                    { label: 'Keyboard Navigation', active: true, note: 'Alt+Arrow keys' },
+                    { label: 'Keyboard Navigation', active: true, note: 'Tab · OPSIS Assist' },
                     { label: 'Font Size',           active: true, note: `${settings?.fontSize ?? 16}px` },
                   ].map(item => (
                     <div key={item.label} className="flex items-center justify-between py-0.5">

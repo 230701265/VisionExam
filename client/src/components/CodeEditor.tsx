@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAccessibility } from './AccessibilityProvider';
-import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
+import { useOPSISAssist } from '@/hooks/useOPSISAssist';
 import { Play, StopCircle, Save, RotateCcw, Terminal, CheckCircle, XCircle, Clock } from 'lucide-react';
 import type { ProgrammingLanguage, CodeExecutionResult, TestCase } from '@shared/schema';
 
@@ -117,44 +117,37 @@ export function CodeEditor({
   const [fontSize, setFontSize] = useState(14);
   const executionSupported = EXECUTABLE_LANGUAGES.includes(selectedLanguage);
   
-  const { announceToScreenReader } = useAccessibility();
+  const { announceToScreenReader, speak } = useAccessibility();
   const editorRef = useRef<any>(null);
   const voiceRunRef = useRef<() => void>(() => {});
   const voiceResultRef = useRef<() => string>(() => 'There are no coding test results yet.');
 
   // Keyboard shortcuts for the code editor
-  const codeEditorShortcuts = [
-    {
+  const codeEditorShortcuts = {
+    run: {
       key: 'F5',
       action: () => handleExecute(),
-      description: 'Run code'
     },
-    {
+    reset: {
       key: 'F9',
       action: () => handleReset(),
-      description: 'Reset code to default'
     },
-    {
+    save: {
       key: 's',
       ctrlKey: true,
       action: () => handleSave(),
-      description: 'Save code (Ctrl+S)'
     },
-    {
+    increaseFont: {
       key: 'Equal',
       ctrlKey: true,
       action: () => setFontSize(prev => Math.min(prev + 2, 32)),
-      description: 'Increase font size (Ctrl+=)'
     },
-    {
+    decreaseFont: {
       key: 'Minus',
       ctrlKey: true,
       action: () => setFontSize(prev => Math.max(prev - 2, 8)),
-      description: 'Decrease font size (Ctrl+-)'
     },
-  ];
-
-  useKeyboardNavigation(codeEditorShortcuts);
+  };
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor;
@@ -225,6 +218,17 @@ export function CodeEditor({
       setIsExecuting(false);
     }
   };
+
+  const editorVoiceHandler = useCallback((command: import('@/voice/types').ParsedVoiceCommand) => {
+    if (command.definition.id === 'runTests') {
+      void handleExecute();
+      speak('Running the coding tests.', { priority: 'interrupt' });
+    } else if (command.definition.id === 'readTestResults') {
+      speak(voiceResultRef.current(), { priority: 'interrupt' });
+    } else return false;
+  }, [speak]);
+  // Monaco receives its native commands first; provider shortcuts only apply outside its textbox.
+  useOPSISAssist('editor', editorVoiceHandler, codeEditorShortcuts);
 
   voiceRunRef.current = () => void handleExecute();
   voiceResultRef.current = () => executionResult

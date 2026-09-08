@@ -11,6 +11,7 @@ interface VoiceControlProps {
   error: string | null;
   onToggle: () => void;
   onStopSpeech: () => void;
+  assistEnabled?: boolean;
 }
 
 export function VoiceControl({
@@ -22,8 +23,9 @@ export function VoiceControl({
   error,
   onToggle,
   onStopSpeech,
+  assistEnabled = false,
 }: VoiceControlProps) {
-  if (mode === 'off') return null;
+  if (mode === 'off' && !assistEnabled) return null;
 
   const unavailable = !isSupported;
   return (
@@ -38,14 +40,14 @@ export function VoiceControl({
           size="sm"
           variant={isListening ? 'default' : 'outline'}
           onClick={onToggle}
-          disabled={unavailable}
+          disabled={unavailable || assistEnabled}
           aria-pressed={isListening}
-          aria-label={isListening ? 'Stop listening' : 'Start voice command listening'}
-          title={unavailable ? 'Voice input is not supported in this browser' : 'Hold Ctrl+Shift+Space or activate to speak'}
+          aria-label={assistEnabled ? 'OPSIS Assist continuous listening is enabled' : isListening ? 'Stop listening' : 'Start push-to-talk voice command listening'}
+          title={unavailable ? 'Voice input is not supported in this browser' : assistEnabled ? 'Assist is listening continuously' : 'Start a short push-to-talk command session'}
           data-testid="button-voice-command"
         >
           {isListening ? <MicOff className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
-          {isListening ? 'Stop listening' : 'Voice command'}
+          {assistEnabled ? 'Assist active' : isListening ? 'Stop listening' : 'Voice command'}
         </Button>
         <Button
           type="button"
@@ -59,7 +61,7 @@ export function VoiceControl({
           {isListening ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
         </Button>
         <span className="text-xs text-muted-foreground">
-          {isListening ? 'Listening' : 'Ctrl+Shift+Space'}
+          {assistEnabled ? 'Continuous Assist' : isListening ? 'Listening' : 'Voice command'}
         </span>
       </div>
       <p className="sr-only" aria-live="polite" aria-atomic="true">
