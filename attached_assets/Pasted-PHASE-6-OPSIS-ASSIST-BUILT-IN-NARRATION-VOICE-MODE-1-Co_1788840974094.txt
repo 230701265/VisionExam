@@ -1,0 +1,47 @@
+PHASE 6 — "OPSIS ASSIST": BUILT-IN NARRATION + VOICE MODE
+
+1. Consolidate: replace useInternationalKeyboardNavigation, usePageNavigation,
+   and the global shortcuts in useKeyboardNavigation/useGlobalNavigation with
+   ONE new system for this feature — do not add a fifth competing keyboard
+   listener on top of the existing three.
+
+2. Toggle shortcut: repurpose the existing Ctrl+Shift+Space voice-command
+   trigger into a single "OPSIS Assist" on/off toggle, mounted once (e.g. in
+   AccessibilityProvider). Turning it on announces "OPSIS Assist on" via the
+   existing speak()/VoiceNarrator, starts the reading cursor (see item 3) at
+   the top of main content, and starts continuous voice listening (item 5).
+   Turning it off announces "OPSIS Assist off" and stops both.
+
+3. Reading cursor: extend usePageNavigation.ts's findNavigableElements() to
+   also capture non-interactive readable content (headings, paragraphs,
+   question text, labels) in addition to interactive controls, computing a
+   spoken description per node (role + accessible name + state — e.g.
+   "Radio button, Option B, C plus plus, not selected"). While Assist mode
+   is on, Down/Up Arrow moves this cursor to the next/previous unit and
+   speaks its description. Enter/Space activates the current unit
+   (click a button/link, select a radio/checkbox, or focus a field for
+   typing, as appropriate to its type).
+
+4. Route all Assist-mode narration through the existing VoiceNarrator/speak()
+   function so it shares the same priority queue as everything else —
+   don't create a second, competing speech system.
+
+5. Add a "continuous" mode to useSpeechRecognition.ts/useVoiceCommands.ts
+   alongside the existing 'push-to-talk' mode, using the Web Speech API's
+   continuous: true option, so any command from commandRegistry.ts can be
+   spoken at any time once Assist mode is active — no mic button needed.
+
+6. Add an explicit, easy-to-find setting: "Assist Mode narration" — on by
+   default only after the user is asked once ("Do you already use a screen
+   reader like VoiceOver, NVDA, or JAWS?"); if yes, default automatic
+   narration OFF (so it doesn't talk over their existing screen reader) but
+   keep continuous voice commands available regardless of that answer.
+
+7. Add a short spoken first-run tutorial the first time Assist mode is
+   activated, covering: Up/Down Arrow to move, Enter/Space to activate,
+   speaking a command any time, and the toggle shortcut to turn it off.
+
+8. Document in the Help dialog and Accessibility Center, plainly, that OPSIS
+   Assist is a purpose-built in-app reader for OPSIS's own content — it is
+   not a system-wide screen reader and doesn't replace NVDA/JAWS/VoiceOver
+   outside this app.
