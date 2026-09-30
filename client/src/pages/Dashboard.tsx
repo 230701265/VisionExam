@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { AudioControls } from '@/components/AudioControls';
+import { VoiceControl } from '@/components/VoiceControl';
 import { useAccessibility } from '@/components/AccessibilityProvider';
 import { TeacherDashboard } from './TeacherDashboard';
 import type { Exam, ExamAttemptWithDetails } from '@shared/schema';
@@ -86,7 +87,7 @@ function CountCell({ value, label }: { value: number; label: string }) {
 
 /* ── Main dashboard ─────────────────────────────── */
 export default function Dashboard({ currentUser }: DashboardProps) {
-  const { settings, announceToScreenReader } = useAccessibility();
+  const { settings, announceToScreenReader, assist } = useAccessibility();
   const [notifRead, setNotifRead] = useState<Set<number>>(new Set());
   const [now] = useState(() => new Date());
 
@@ -194,8 +195,23 @@ export default function Dashboard({ currentUser }: DashboardProps) {
      STUDENT DASHBOARD
   ═══════════════════════════════════════════════ */
   return (
-    <main id="main-content" role="main" className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 page-enter">
-
+    <>
+      {/* VoiceControl is fixed-positioned, so it must stay a sibling of <main>, not a child -
+          <main> carries the page-enter transform animation, which would otherwise turn it into
+          the containing block for position:fixed and pin the control deep in the page instead
+          of the viewport corner (see ExamTaking.tsx, which uses this same sibling pattern). */}
+      <VoiceControl
+        mode={settings.voiceMode}
+        isSupported={assist.isSupported}
+        isListening={assist.isListening}
+        interimText={assist.interimText}
+        lastTranscript={assist.lastTranscript}
+        error={assist.error}
+        onToggle={assist.toggleListening}
+        onStopSpeech={assist.stopSpeech}
+        assistEnabled={assist.assistEnabled}
+      />
+      <main id="main-content" role="main" className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 page-enter">
       {/* ── 1. Welcome Hero Card ───────────────────── */}
       <motion.div {...fadeUp(0)}>
         <div
@@ -834,6 +850,7 @@ export default function Dashboard({ currentUser }: DashboardProps) {
       </motion.div>
 
     </main>
+    </>
   );
 }
 

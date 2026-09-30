@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { VoiceNarrator, type NarratorOptions } from '@/voice/narrator';
 import { matchVoiceCommand } from '@/voice/commandRegistry';
+import { logVoiceCommand } from '@/voice/commandLog';
 import { BrowserSpeechEngine, isSpeechRecognitionSupported } from '@/voice/speechRecognition';
 import { ReadingScanner, describeReadingElement, isNativeReadingExempt } from '@/voice/readingScanner';
 import type { ParsedVoiceCommand, VoiceMode, VoiceScope } from '@/voice/types';
@@ -454,18 +455,29 @@ export function AccessibilityProvider({ children, userId }: { children: ReactNod
         const registrations = Array.from(voiceScopesRef.current.entries()).reverse();
         let handled = false;
         let lowConfidence = false;
+        let matchedIntent: string | null = null;
         for (const [scope, handler] of registrations) {
           const match = matchVoiceCommand(transcript, scope, result.confidence ?? 1);
           lowConfidence ||= match.status === 'low-confidence';
           if (match.status === 'matched' && match.command && handler(match.command) !== false) {
             handled = true;
+            matchedIntent = match.command.definition.id;
             break;
           }
         }
+        logVoiceCommand({
+          transcript,
+          intent: matchedIntent,
+          confidence: result.confidence ?? 1,
+          result: handled ? 'matched' : lowConfidence ? 'low-confidence' : 'unknown',
+        });
         if (!handled) {
           const message = lowConfidence ? `I heard ${transcript}. Please repeat.` : 'Command not understood. Say help for available commands.';
           setAssistError(message); announceRef.current(message);
           if (settingsRef.current.speechEnabled && settingsRef.current.audioInstructions) speakRef.current(message, { priority: 'interrupt' });
+        } else {
+          setAssistError(null);
+          announceRef.current('Command completed.');
         }
       },
       () => { if (generation === generationRef.current) { backoffRef.current = 250; setAssistListening(true); setAssistError(null); } },

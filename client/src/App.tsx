@@ -1,10 +1,11 @@
 import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AccessibilityProvider } from "@/components/AccessibilityProvider";
+import { AccessibilityProvider, useAccessibility } from "@/components/AccessibilityProvider";
+import type { Exam, ExamAttemptWithDetails } from "@shared/schema";
 import { Navigation } from "@/components/Navigation";
 import { InternationalKeyboardHelp } from "@/components/InternationalKeyboardHelp";
 import { QuickAccessibilityPanel } from "@/components/QuickAccessibilityPanel";
@@ -368,8 +369,80 @@ function Router({ currentUser, onLogout }: { currentUser: User; onLogout: () => 
   );
 }
 
-function AppAssistShortcuts({ setOpen }: { setOpen: Dispatch<SetStateAction<boolean>> }) {
-  useOPSISAssist('global', () => {}, {
+function AppAssistShortcuts({
+  setOpen,
+  currentUser,
+}: {
+  setOpen: Dispatch<SetStateAction<boolean>>;
+  currentUser: { id: string; role: string };
+}) {
+  const [, setLocation] = useLocation();
+  const { speak, assist } = useAccessibility();
+
+  const navigationCommandHandler = (command: import('@/voice/types').ParsedVoiceCommand): boolean | void => {
+    switch (command.definition.id) {
+      case 'navigateHome':
+        setLocation('/');
+        speak('Opening the dashboard.', { priority: 'interrupt' });
+        break;
+      case 'openProfile':
+        setLocation('/accessibility');
+        speak('Opening your profile.', { priority: 'interrupt' });
+        break;
+      case 'openAccessibilityProfile':
+        setLocation('/accessibility');
+        speak('Opening your accessibility profile.', { priority: 'interrupt' });
+        break;
+      case 'openSettings':
+        setLocation('/settings');
+        speak('Opening settings.', { priority: 'interrupt' });
+        break;
+      case 'goBack':
+        window.history.back();
+        speak('Going back.', { priority: 'interrupt' });
+        break;
+      case 'enableVoiceCommands':
+        speak('Voice commands enabled.', { priority: 'interrupt' });
+        assist.setAssistEnabled(true);
+        break;
+      case 'disableVoiceCommands':
+        speak('Voice commands disabled.', { priority: 'interrupt' });
+        assist.setAssistEnabled(false);
+        break;
+      case 'openExamination':
+      case 'startExam': {
+        void (async () => {
+          try {
+            const [exams, attempts] = await Promise.all([
+              queryClient.fetchQuery<Exam[]>({ queryKey: ['/api/exams'] }),
+              queryClient.fetchQuery<ExamAttemptWithDetails[]>({ queryKey: ['/api/attempts/user', currentUser.id] }),
+            ]);
+            // Mirrors Dashboard.tsx's upcomingExams filter: exams the student hasn't completed yet.
+            const completedIds = new Set(attempts.filter(a => a.completedAt).map(a => a.examId));
+            const available = exams.filter(exam => !completedIds.has(exam.id));
+            if (available.length === 1) {
+              setLocation(`/exam/${available[0].id}`);
+              speak(`Starting ${available[0].title}.`, { priority: 'interrupt' });
+            } else if (available.length === 0) {
+              setLocation('/');
+              speak('There are no open exams right now.', { priority: 'interrupt' });
+            } else {
+              setLocation('/');
+              speak(`You have ${available.length} open exams: ${available.map(e => e.title).join(', ')}. Open the dashboard to choose one.`, { priority: 'interrupt' });
+            }
+          } catch {
+            speak('I could not load your exams. Please open the dashboard.', { priority: 'interrupt' });
+            setLocation('/');
+          }
+        })();
+        break;
+      }
+      default:
+        return false;
+    }
+  };
+
+  useOPSISAssist('global', navigationCommandHandler, {
     accessibility: { key: 'a', altKey: true, action: () => setOpen(open => !open) },
     accessibilityF11: { key: 'F11', action: () => setOpen(open => !open) },
     escape: { key: 'Escape', action: () => setOpen(false), allowInEditable: true },
@@ -442,7 +515,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AccessibilityProvider userId={currentUser.id}>
-          <AppAssistShortcuts setOpen={setIsQuickPanelOpen} />
+          <AppAssistShortcuts setOpen={setIsQuickPanelOpen} currentUser={currentUser} />
           <div className="min-h-screen bg-background text-foreground">
             {/* Skip Links */}
             <div className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50">

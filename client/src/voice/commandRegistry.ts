@@ -7,6 +7,12 @@ import type {
 } from './types';
 
 export const VOICE_CONFIDENCE_THRESHOLD = 0.75;
+/** Destructive commands (exam submission) require a higher-confidence recognition before they're even staged. */
+export const VOICE_DESTRUCTIVE_CONFIDENCE_THRESHOLD = 0.85;
+
+function thresholdFor(definition: VoiceCommandDefinition): number {
+  return definition.destructive ? VOICE_DESTRUCTIVE_CONFIDENCE_THRESHOLD : VOICE_CONFIDENCE_THRESHOLD;
+}
 
 export const VOICE_COMMANDS: VoiceCommandDefinition[] = [
   {
@@ -71,7 +77,7 @@ export const VOICE_COMMANDS: VoiceCommandDefinition[] = [
   },
   {
     id: 'help',
-    phrases: ['help', 'what can i say', 'voice commands'],
+    phrases: ['help', 'what can i say', 'voice commands', 'give me help'],
     description: 'List commands available in this context',
     scopes: ['global', 'question', 'editor', 'results'],
   },
@@ -83,7 +89,7 @@ export const VOICE_COMMANDS: VoiceCommandDefinition[] = [
   },
   {
     id: 'cancel',
-    phrases: ['cancel', 'stop', 'be quiet'],
+    phrases: ['cancel', 'stop', 'be quiet', 'no'],
     description: 'Cancel the current voice action or speech',
     scopes: ['global', 'question', 'editor', 'results'],
   },
@@ -120,10 +126,88 @@ export const VOICE_COMMANDS: VoiceCommandDefinition[] = [
   },
   {
     id: 'confirmSubmit',
-    phrases: ['confirm submit', 'confirm submission', 'yes submit'],
+    phrases: ['confirm submit', 'confirm submission', 'yes submit', 'yes'],
     description: 'Confirm exam submission',
     scopes: ['question'],
     destructive: true,
+  },
+  {
+    id: 'readOptions',
+    phrases: ['read the options', 'read options', 'what are the options'],
+    description: 'Read all answer options for the current question',
+    scopes: ['question'],
+  },
+  {
+    id: 'clearAnswer',
+    phrases: ['clear answer', 'clear my answer', 'remove answer'],
+    description: 'Clear the selected answer for the current question',
+    scopes: ['question'],
+  },
+  {
+    id: 'readSelectedAnswer',
+    phrases: ['read my answer', 'read selected answer', 'what did i select'],
+    description: 'Read back the currently selected answer',
+    scopes: ['question'],
+  },
+  {
+    id: 'submitAnswer',
+    phrases: ['submit answer', 'save answer', 'confirm answer'],
+    description: 'Confirm the current answer and move on',
+    scopes: ['question'],
+  },
+  {
+    id: 'navigateHome',
+    phrases: ['go home', 'take me home', 'open dashboard', 'go to dashboard'],
+    description: 'Go to the dashboard',
+    scopes: ['global'],
+  },
+  {
+    id: 'openProfile',
+    phrases: ['open profile', 'go to profile'],
+    description: 'Open your profile',
+    scopes: ['global'],
+  },
+  {
+    id: 'openAccessibilityProfile',
+    phrases: ['open accessibility profile', 'go to accessibility profile', 'accessibility profile'],
+    description: 'Open your accessibility profile',
+    scopes: ['global'],
+  },
+  {
+    id: 'goBack',
+    phrases: ['go back'],
+    description: 'Go back to the previous screen',
+    scopes: ['global'],
+  },
+  {
+    id: 'openSettings',
+    phrases: ['open settings', 'go to settings'],
+    description: 'Open settings',
+    scopes: ['global'],
+  },
+  {
+    id: 'openExamination',
+    phrases: ['open examination', 'open exam'],
+    description: 'Open an available exam',
+    scopes: ['global'],
+  },
+  {
+    id: 'startExam',
+    phrases: ['start exam'],
+    description: 'Start an available exam',
+    scopes: ['global'],
+  },
+  {
+    id: 'enableVoiceCommands',
+    phrases: ['enable voice commands', 'turn on voice commands'],
+    description: 'Enable OPSIS Assist voice commands',
+    scopes: ['global'],
+  },
+  {
+    id: 'disableVoiceCommands',
+    phrases: ['disable voice commands', 'turn off voice commands'],
+    description: 'Disable OPSIS Assist voice commands',
+    scopes: ['global'],
   },
 ];
 
@@ -141,7 +225,7 @@ function getOptionArgument(transcript: string, verb: 'read' | 'select'): string 
   const normalized = normalizeTranscript(transcript);
   const starters = verb === 'read' ? 'read|what|repeat' : 'select|choose|answer';
   const match = normalized.match(
-    new RegExp(`^(?:${starters})(?: option| answer)?\\s+(a|b|c|d|true|false)$`),
+    new RegExp(`^(?:${starters})(?: option| answer)?\\s+([a-z]|[1-9][0-9]?|true|false)$`),
   );
   return match?.[1]?.toUpperCase();
 }
@@ -162,7 +246,7 @@ export function matchVoiceCommand(
   const optionToRead = getOptionArgument(normalized, 'read');
   if (optionToRead) {
     const definition = VOICE_COMMANDS.find(command => command.id === 'readOption')!;
-    if (confidence < VOICE_CONFIDENCE_THRESHOLD) {
+    if (confidence < thresholdFor(definition)) {
       return { status: 'low-confidence', confidence };
     }
     return {
@@ -177,7 +261,7 @@ export function matchVoiceCommand(
   const optionToSelect = getOptionArgument(normalized, 'select');
   if (optionToSelect) {
     const definition = VOICE_COMMANDS.find(command => command.id === 'selectOption')!;
-    if (confidence < VOICE_CONFIDENCE_THRESHOLD) {
+    if (confidence < thresholdFor(definition)) {
       return { status: 'low-confidence', confidence };
     }
     return {
@@ -189,9 +273,16 @@ export function matchVoiceCommand(
     };
   }
 
-  const definition = VOICE_COMMANDS.find(command => exactPhraseMatch(normalized, command));
-  if (!definition) return { status: 'unknown', confidence };
-  if (confidence < VOICE_CONFIDENCE_THRESHOLD) return { status: 'low-confidence', confidence };
+  // Some phrases are intentionally shared by more than one command (e.g. "go back" means
+  // previousQuestion in the question scope but goBack everywhere else) — prefer whichever
+  // candidate actually applies to the scope being tried, falling back to the first candidate
+  // so an out-of-scope phrase still reports 'wrong-scope' rather than 'unknown'.
+  const candidates = VOICE_COMMANDS.filter(command => exactPhraseMatch(normalized, command));
+  if (!candidates.length) return { status: 'unknown', confidence };
+  const definition =
+    candidates.find(command => command.scopes.includes(scope) || command.scopes.includes('global')) ??
+    candidates[0];
+  if (confidence < thresholdFor(definition)) return { status: 'low-confidence', confidence };
   if (!definition.scopes.includes(scope) && !definition.scopes.includes('global')) {
     return { status: 'wrong-scope', confidence };
   }
@@ -207,6 +298,15 @@ export function commandsForScope(scope: VoiceScope): VoiceCommandDefinition[] {
   return VOICE_COMMANDS.filter(
     command => command.scopes.includes(scope) || command.scopes.includes('global'),
   );
+}
+
+/** Builds a spoken "here's what you can say" sentence from the commands actually available in this context. */
+export function buildHelpMessage(scope: VoiceScope): string {
+  const descriptions = commandsForScope(scope)
+    .map(command => command.description.charAt(0).toLowerCase() + command.description.slice(1))
+    .filter((description, index, all) => all.indexOf(description) === index);
+  if (!descriptions.length) return 'No voice commands are available here.';
+  return `You can say: ${descriptions.join(', ')}.`;
 }
 
 export type VoiceActionHandler = (command: ParsedVoiceCommand) => void;

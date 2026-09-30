@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "test:voice": "tsx --test client/src/voice/*.test.ts",
+    "test:assist-browser": "node tests/browser/opsis-assist.e2e.mjs",
     "test:security": "tsx --test server/*.test.ts",
     "db:push": "drizzle-kit push"
   },
@@ -52,6 +53,7 @@
     "cmdk": "^1.1.1",
     "connect-pg-simple": "^10.0.0",
     "date-fns": "^3.6.0",
+    "dotenv": "^17.4.2",
     "drizzle-orm": "^0.39.1",
     "drizzle-zod": "^0.7.0",
     "embla-carousel-react": "^8.6.0",
@@ -66,6 +68,7 @@
     "openid-client": "^6.6.4",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
+    "puppeteer-core": "^25.10.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",

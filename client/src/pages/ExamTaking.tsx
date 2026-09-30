@@ -11,6 +11,7 @@ import { VoiceControl } from '@/components/VoiceControl';
 import type { CodeEditorVoiceActions } from '@/components/CodeEditor';
 import { useAccessibility } from '@/components/AccessibilityProvider';
 import { useOPSISAssist } from '@/hooks/useOPSISAssist';
+import { buildHelpMessage } from '@/voice/commandRegistry';
 import { apiRequest } from '@/lib/queryClient';
 import type { ExamWithQuestions, ExamAttempt } from '@shared/schema';
 import {
@@ -273,7 +274,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
       case 'stageSubmit':
         handleSubmitExam();
         if (shouldSpeak) {
-          speak('Submission is ready. Say confirm submit to submit your exam, or cancel to continue.', { priority: 'interrupt' });
+          speak("You are about to submit your examination. This action cannot be undone. Say yes to confirm or no to cancel.", { priority: 'interrupt' });
         }
         break;
       case 'confirmSubmit':
@@ -294,11 +295,26 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
     speak,
   ]);
 
-  const voiceCommandHandler = useCallback((command: import('@/voice/types').ParsedVoiceCommand) => {
+  const voiceCommandHandler = useCallback((command: import('@/voice/types').ParsedVoiceCommand): boolean | void => {
     const question = exam?.questions[currentQuestionIndex];
     const answerOptions = Array.isArray(question?.options)
       ? question.options as Array<{ id: string; text: string }>
       : [];
+    // Resolves a spoken option argument by id first ("select option b"), then falls back to a
+    // 1-based position ("select option 2") so exams with any number of options are supported.
+    const resolveOption = (argument?: string) => {
+      const byId = answerOptions.find(item => item.id.toLowerCase() === argument?.toLowerCase());
+      if (byId) return byId;
+      const position = Number(argument);
+      return Number.isInteger(position) && position >= 1 ? answerOptions[position - 1] : undefined;
+    };
+
+    // While a submit-exam confirmation is pending, nothing else should quietly slip through —
+    // an unrelated or unclear response re-asks the confirmation question instead.
+    if (showSubmitDialog && !['confirmSubmit', 'cancel', 'help', 'repeat'].includes(command.definition.id)) {
+      speak("Please say yes to confirm submission, or no to cancel.", { priority: 'interrupt' });
+      return true;
+    }
 
     switch (command.definition.id) {
       case 'nextQuestion':
@@ -315,13 +331,18 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
         }
         break;
       case 'readOption': {
-        const option = answerOptions.find(item => item.id.toLowerCase() === command.argument?.toLowerCase());
+        const option = resolveOption(command.argument);
         if (option) speak(`Option ${option.id.toUpperCase()}: ${option.text}`, { priority: 'interrupt' });
         else speak(`Option ${command.argument ?? ''} is not available for this question.`, { priority: 'interrupt' });
         break;
       }
+      case 'readOptions': {
+        if (!answerOptions.length) speak('This question has no listed options.', { priority: 'interrupt' });
+        else speak(answerOptions.map(option => `Option ${option.id.toUpperCase()}: ${option.text}`).join('. '), { priority: 'interrupt' });
+        break;
+      }
       case 'selectOption': {
-        const option = answerOptions.find(item => item.id.toLowerCase() === command.argument?.toLowerCase());
+        const option = resolveOption(command.argument);
         if (option) {
           handleAnswerChange(option.id);
           speak(`Option ${option.id.toUpperCase()} selected.`, { priority: 'interrupt' });
@@ -330,6 +351,40 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
           speak(`${command.argument} selected.`, { priority: 'interrupt' });
         } else {
           speak(`Option ${command.argument ?? ''} is not available for this question.`, { priority: 'interrupt' });
+        }
+        break;
+      }
+      case 'clearAnswer': {
+        if (!exam) break;
+        const qid = exam.questions[currentQuestionIndex].id;
+        setAnswers(prev => {
+          const next = { ...prev };
+          delete next[qid];
+          return next;
+        });
+        speak('Answer cleared.', { priority: 'interrupt' });
+        announceToScreenReader('Answer cleared.');
+        break;
+      }
+      case 'readSelectedAnswer': {
+        const selected = question ? answers[question.id] : undefined;
+        if (!selected) {
+          speak('No answer selected yet.', { priority: 'interrupt' });
+        } else {
+          const option = answerOptions.find(item => item.id.toLowerCase() === selected.toLowerCase());
+          speak(option ? `Your answer is option ${option.id.toUpperCase()}: ${option.text}` : `Your answer is ${selected}.`, { priority: 'interrupt' });
+        }
+        break;
+      }
+      case 'submitAnswer': {
+        const selected = question ? answers[question.id] : undefined;
+        if (!selected) {
+          speak('Please select an option before submitting your answer.', { priority: 'interrupt' });
+        } else if (exam && currentQuestionIndex < exam.questions.length - 1) {
+          speak('Answer saved. Moving to the next question.', { priority: 'interrupt' });
+          nextQuestion();
+        } else {
+          speak('Answer saved. This was the last question. Say submit exam when you are ready to finish.', { priority: 'interrupt' });
         }
         break;
       }
@@ -356,7 +411,7 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
       }
       case 'help':
         setShowHelpDialog(true);
-        speak('Available commands include next question, previous question, read question, read option A, select option A, read timer, run tests, submit exam, and repeat.', { priority: 'interrupt' });
+        speak(buildHelpMessage('question'), { priority: 'interrupt' });
         break;
       case 'repeat':
         speak(lastAction || (question ? `Question ${currentQuestionIndex + 1}: ${question.text}` : 'There is nothing to repeat yet.'), { priority: 'interrupt' });
@@ -386,17 +441,24 @@ export default function ExamTaking({ currentUser }: ExamTakingProps) {
       case 'confirmSubmit':
         dispatchExamAction('confirmSubmit', 'voice');
         break;
+      default:
+        // Not recognized in this scope — let it fall through to the global handler
+        // (e.g. navigation commands) instead of silently swallowing it.
+        return false;
     }
   }, [
+    answers,
     announceToScreenReader,
     currentQuestionIndex,
     dispatchExamAction,
     exam,
     handleAnswerChange,
     lastAction,
+    nextQuestion,
     pauseSpeaking,
     resumeSpeaking,
     settings.speechRate,
+    showSubmitDialog,
     speak,
     stopSpeaking,
     timeRemaining,

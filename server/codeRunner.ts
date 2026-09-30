@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -47,7 +47,11 @@ async function runJavaScriptTest(
   const runnableCode = language === "typescript"
     ? (await transform(code, { loader: "ts", target: "es2022" })).code
     : code;
-  const directory = await mkdtemp(join(tmpdir(), "opsis-js-"));
+  // Resolve to the real path: on macOS, os.tmpdir() lives under a symlink (/var -> /private/var),
+  // and Node's --allow-fs-read permission check resolves symlinks internally, so granting the
+  // symlinked path would deny access to the very script we just wrote. realpath is a no-op
+  // wherever tmpdir() isn't a symlink (e.g. Linux), so this doesn't change behavior there.
+  const directory = await realpath(await mkdtemp(join(tmpdir(), "opsis-js-")));
   const scriptPath = join(directory, "runner.mjs");
   const runner = `import vm from "node:vm";
 const context = vm.createContext(Object.create(null), { codeGeneration: { strings: false, wasm: false } });

@@ -746,6 +746,8 @@ export default function AccessibilityCenter({ currentUser: _currentUser }: Props
                           'Next question', 'Previous question',
                           'Submit exam', 'Flag question',
                           'Read question', 'Open help',
+                          'Go home', 'Open settings',
+                          'Go back', 'Start exam',
                         ].map(cmd => (
                           <span key={cmd} className="text-xs text-teal-700 dark:text-teal-400 flex items-center gap-1">
                             <Mic className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />

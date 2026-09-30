@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { VoiceControl } from '@/components/VoiceControl';
 import { useAccessibility } from '@/components/AccessibilityProvider';
 import { useOPSISAssist } from '@/hooks/useOPSISAssist';
+import { buildHelpMessage } from '@/voice/commandRegistry';
 import type { ParsedVoiceCommand } from '@/voice/types';
 import type { ExamAttempt, ExamWithQuestions } from '@shared/schema';
 import { CheckCircle, XCircle, Download, ArrowLeft, Clock, Target } from 'lucide-react';
@@ -55,7 +56,7 @@ export default function Results({ currentUser }: ResultsProps) {
     announceToScreenReader('Reading exam results aloud.');
   }, [announceToScreenReader, attempt, exam, speak]);
 
-  const voiceCommandHandler = useCallback((command: ParsedVoiceCommand) => {
+  const voiceCommandHandler = useCallback((command: ParsedVoiceCommand): boolean | void => {
     switch (command.definition.id) {
       case 'readResults':
       case 'readQuestion':
@@ -63,7 +64,7 @@ export default function Results({ currentUser }: ResultsProps) {
         readResults();
         break;
       case 'help':
-        speak('Available commands on this page include read results, repeat, pause speech, resume speech, speak faster, and speak slower.', { priority: 'interrupt' });
+        speak(buildHelpMessage('results'), { priority: 'interrupt' });
         break;
       case 'cancel':
         stopSpeaking();
@@ -83,6 +84,9 @@ export default function Results({ currentUser }: ResultsProps) {
         updateSettings({ speechRate: Math.max(5, settings.speechRate - 1) });
         speak('Speech rate decreased.', { priority: 'interrupt' });
         break;
+      default:
+        // Not recognized here — let it fall through to the global handler (e.g. navigation).
+        return false;
     }
   }, [
     announceToScreenReader,

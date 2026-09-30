@@ -25,8 +25,9 @@ export function VoiceControl({
   onStopSpeech,
   assistEnabled = false,
 }: VoiceControlProps) {
-  if (mode === 'off' && !assistEnabled) return null;
-
+  // Always render, even when voice mode is 'off' (the default for every account) - a control
+  // that only appears once voice is already on gives users no way to discover or enable it.
+  // onToggle (push-to-talk) works regardless of mode, so this is safe to click from 'off'.
   const unavailable = !isSupported;
   return (
     <section

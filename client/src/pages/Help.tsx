@@ -140,9 +140,11 @@ export default function Help({ currentUser }: HelpProps) {
         <h2 id="assist-heading" className="text-xl font-bold text-foreground mb-4">OPSIS Assist</h2>
         <Card className="border-border shadow-sm"><CardContent className="p-5 text-sm text-muted-foreground">
           OPSIS Assist has one shared microphone session. Choose Push to talk or continuous Assist in Accessibility Center.
-          Available commands are scoped to the page; say “help” for the current list. Voice and narration are optional,
-          and all commands remain available through keyboard and standard controls. OPSIS Assist is an in-app aid; it
-          does not replace NVDA, JAWS, VoiceOver, or any other screen reader.
+          Available commands are scoped to the page; say “help” for the current list. Navigation commands like “go home,”
+          “open dashboard,” “open profile,” “open accessibility profile,” “open settings,” “go back,” and “start exam” work
+          from anywhere in OPSIS. Say “enable voice commands” or “disable voice commands” to turn Assist on or off by voice.
+          Voice and narration are optional, and all commands remain available through keyboard and standard controls.
+          OPSIS Assist is an in-app aid; it does not replace NVDA, JAWS, VoiceOver, or any other screen reader.
         </CardContent></Card>
       </section>
 

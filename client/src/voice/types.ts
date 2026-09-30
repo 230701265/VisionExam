@@ -21,7 +21,20 @@ export type CommandId =
   | 'increaseSpeechRate'
   | 'decreaseSpeechRate'
   | 'stageSubmit'
-  | 'confirmSubmit';
+  | 'confirmSubmit'
+  | 'readOptions'
+  | 'clearAnswer'
+  | 'readSelectedAnswer'
+  | 'submitAnswer'
+  | 'navigateHome'
+  | 'openProfile'
+  | 'openAccessibilityProfile'
+  | 'goBack'
+  | 'openSettings'
+  | 'openExamination'
+  | 'startExam'
+  | 'enableVoiceCommands'
+  | 'disableVoiceCommands';
 
 export interface VoiceCommandDefinition {
   id: CommandId;
